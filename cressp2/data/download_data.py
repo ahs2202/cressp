@@ -1,8 +1,6 @@
 from biobookshelf.main import *
 from biobookshelf import *
 
-import pkg_resources
-
 def Download_Data( ) :
     # download data files from Git-LFS
     dir_file_download_flag = pkg_resources.resource_filename( "cressp2", 'data/pdb/rcsb_pdb.tsv.gz.download_completed.flag' )
