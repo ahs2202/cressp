@@ -37,7 +37,7 @@ def main( ) :
     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
         dict_blosum62[ aa_0, aa_1 ] = score
         
-    Download_Data( )
+    Download_Data( ) # download data
     
     
 

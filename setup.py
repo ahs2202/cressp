@@ -12,7 +12,7 @@ with open(os.path.join(HERE, "README.md")) as fid:
 
 setup(
     name='cressp2',
-    version='0.0.2',
+    version='0.0.3',
     author="Hyunsu An",
     author_email="ahs2202@gm.gist.ac.kr",
     description="a program to find cross-reactive epitopes with structural information from known protein structures.",
@@ -23,7 +23,7 @@ setup(
     packages=find_packages( ),
     include_package_data=True,
     install_requires=[
-        'tensorflow>=2.4.1',
+        'tensorflow>=2.3.2',
         'biobookshelf>=0.1.8',
     ],
     entry_points={
