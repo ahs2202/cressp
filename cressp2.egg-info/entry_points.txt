@@ -1,0 +1,3 @@
+[console_scripts]
+cressp2 = cressp2.main.cressp2:main
+
