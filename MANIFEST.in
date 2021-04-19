@@ -1,0 +1,3 @@
+include cressp2/data/blosum62.tsv.gz
+include cressp2/data/human/uniprot.tsv.gz
+

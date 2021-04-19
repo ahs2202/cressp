@@ -1,0 +1,14 @@
+.gitattributes
+LICENSE
+MANIFEST.in
+README.md
+setup.py
+cressp2/__init__.py
+cressp2.egg-info/PKG-INFO
+cressp2.egg-info/SOURCES.txt
+cressp2.egg-info/dependency_links.txt
+cressp2.egg-info/entry_points.txt
+cressp2.egg-info/requires.txt
+cressp2.egg-info/top_level.txt
+cressp2/data/blosum62.tsv.gz
+cressp2/data/human/uniprot.tsv.gz

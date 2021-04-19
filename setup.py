@@ -1,0 +1,34 @@
+"""Setup script for bio-bookshelf"""
+
+import os.path
+from setuptools import setup, find_packages
+
+# The directory containing this file
+HERE = os.path.abspath(os.path.dirname(__file__))
+
+# The text of the README file
+with open(os.path.join(HERE, "README.md")) as fid:
+    README = fid.read()
+
+setup(
+    name='cressp2',
+    version='0.0.2',
+    author="Hyunsu An",
+    author_email="ahs2202@gm.gist.ac.kr",
+    description="a program to find cross-reactive epitopes with structural information from known protein structures.",
+    long_description=README,
+    long_description_content_type="text/markdown",
+    url="https://github.com/ahs2202/cressp2",
+    license="GPLv3",
+    packages=find_packages( ),
+    include_package_data=True,
+    install_requires=[
+        'tensorflow>=2.4.1',
+        'biobookshelf>=0.1.7',
+    ],
+    entry_points={
+        "console_scripts": [
+            "cressp2=cressp2.main.cressp2:main",
+        ]
+    },
+)
