@@ -1,3 +1,4 @@
 include cressp2/data/blosum62.tsv.gz
 include cressp2/data/human/uniprot.tsv.gz
-
+exclude cressp2/data/pdb/rcsb_pdb.tsv.gz
+exclude cressp2/data/pdb/rcsb_pdb.tsv.gz.download_completed.flag

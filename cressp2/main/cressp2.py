@@ -4,7 +4,8 @@
 from biobookshelf.main import *
 from biobookshelf import *
 
-import pkg_resources
+from cressp2.data import Download_Data
+
 import argparse
 import os, sys, getopt
 from io import StringIO
@@ -31,11 +32,14 @@ def main( ) :
 #     n_threads = int( args.threads )
 
     # read dict_blosum62 from the tsv file
-    df_blosum62 = pd.read_csv( pkg_resources.resource_filename( "cressp2", 'accessory_data/blosum62.tsv.gz' ), sep = '\t' )
+    df_blosum62 = pd.read_csv( pkg_resources.resource_filename( "cressp2", 'data/blosum62.tsv.gz' ), sep = '\t' )
     dict_blosum62 = dict( )
     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
         dict_blosum62[ aa_0, aa_1 ] = score
-    print( dict_blosum62[ 'A', 'A' ] )
+        
+    Download_Data( )
+    
+    
 
     
     
