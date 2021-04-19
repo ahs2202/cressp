@@ -18,3 +18,5 @@ cressp2/data/__pycache__/download_data.cpython-38.pyc
 cressp2/data/human/uniprot.tsv.gz
 cressp2/main/cressp2.py
 cressp2/main/__pycache__/cressp2.cpython-38.pyc
+dist/cressp2-0.0.3-py3-none-any.whl
+dist/cressp2-0.0.3.tar.gz
