@@ -5,13 +5,14 @@ from biobookshelf.main import *
 from biobookshelf import *
 
 import argparse
+import traceback
 import os, sys, getopt
 from io import StringIO
 import time
 import math
 
 # search for local similarities with all human genes # 2020-10-23 17:35:34 
-def Calculate_similarity_score_using_structural_data_of_query_protein_only( dir_file_input ) :
+def Calculate_similarity_score_using_structural_data_of_query_protein_only( dir_file_input, float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp ) :
     """
     # Calculate_similarity_score_using_structural_data_of_query_protein_only
     """
@@ -142,13 +143,13 @@ def Calculate_similarity_score_using_structural_data_of_query_protein_only( dir_
                     if float_score_blosum_weighted_for_window < float_thres_avg_score_blosum_weighted * int_window_size : continue # filter records with low avg alignment score weighted with accessiblities
                     l = [ id_alignment, index_pos_start + 1, index_pos_start + int_window_size, query_start + index_pos_start - int_gap_count_before_subsequence_query, query_start + index_pos_start + int_window_size - 1 - int_gap_count_subsequence_query - int_gap_count_before_subsequence_query, target_start + index_pos_start - int_gap_count_before_subsequence_target, target_start + index_pos_start + int_window_size - 1 - int_gap_count_subsequence_target - int_gap_count_before_subsequence_target, np.round( float_score_blosum_for_window, 3 ), np.round( float_score_blosum_weighted_for_window, 3 ), np.round( float_sum_of_acc_weights, 3 ), n_aligned_residues_for_window, float_prop_pdb_evidence_query, structure_id_query, count_structure_id_query, str_ss8_query, count_id_ss8_most_frequent_query ]
                     file_output.write( ( '\t'.join( list( map( str, l ) ) ) + '\n' ).encode( ) )
-            except : # count errors
+            except Exception as e : # count errors
                 n_errors += 1
-                print( n_errors )
+                print( f"error number {n_errors}", traceback.format_exc( ) )
         file_output.close( )
     return uuid_process
     
-def Combine_result_files_for_each_window_size( dir_file_input ) :
+def Combine_result_files_for_each_window_size( dir_file_input, dir_folder_pipeline, dir_folder_pipeline_temp ) :
     """
     combine result files for each window_size
     """
@@ -157,6 +158,7 @@ def Combine_result_files_for_each_window_size( dir_file_input ) :
         l_dir_file = glob.glob( f"{dir_folder_pipeline_temp}*_window_size_{int_window_size}.tsv.gz" ) # retrieve list of output files to combine into a single output file
         dir_file_output_combining = f'{dir_folder_pipeline}subsequence__window_size_{int_window_size}__struc_data_query_only.combining.tsv.gz'
         dir_file_output_combining_completed = f'{dir_folder_pipeline}subsequence__window_size_{int_window_size}__struc_data_query_only.tsv.gz'
+        l_col = [ 'id_alignment', 'alignment_start', 'alignment_end', 'query_start', 'query_end', 'target_start', 'target_end', 'score_blosum', 'score_blosum_weighted', 'sum_of_weights', 'n_residues_acc', 'prop_pdb_evidence_query', 'structure_id_query', 'count_structure_id_query', 'most_frequent_ss8_query', 'count_most_frequent_ss8_query' ]
         OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, header = '\t'.join( l_col ) + '\n', remove_n_lines = 1 )
         print( f"combining output files for window size {int_window_size} is completed" )
         os.rename( dir_file_output_combining, dir_file_output_combining_completed ) # rename the file once completed
@@ -261,7 +263,7 @@ def main( ) :
     ''' 
     currently not used
     '''
-    parser.add_argument( "-H", "--flag_skip_struc_prop_for_protein_target", help = "(Default: False) Set this flag to skip the estimation of structural properties of target proteins. Only structural properties of query proteins will be used to calculate accessibility-weighted-similarity scores", action = 'store_true' )
+    parser.add_argument( "-Q", "--flag_skip_struc_prop_for_protein_target", help = "(Default: False) Set this flag to skip the estimation of structural properties of target proteins. Only structural properties of query proteins will be used to calculate accessibility-weighted-similarity scores", action = 'store_true' )
     
     args = parser.parse_args( )
     if args.dir_file_protein_target is None :
@@ -441,13 +443,11 @@ def main( ) :
     df = df[ df.e_value <= float_thres_e_value ] # drop entries with too low global similarity
     print( f"number of records after filtering: {len( df )}" )
     
-    l_uuid_process = Multiprocessing( df, Calculate_similarity_score_using_structural_data_of_query_protein_only, n_threads, dir_temp = dir_folder_pipeline_temp ) # process similarity search result with multiple processes, and collect uuid of the processes
+    l_uuid_process = Multiprocessing( df, Calculate_similarity_score_using_structural_data_of_query_protein_only, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp ] ) # process similarity search result with multiple processes, and collect uuid of the processes
     
     
     # combine output files for each window size
-    l_col = [ 'id_alignment', 'alignment_start', 'alignment_end', 'query_start', 'query_end', 'target_start', 'target_end', 'score_blosum', 'score_blosum_weighted', 'sum_of_weights', 'n_residues_acc', 'prop_pdb_evidence_query', 'structure_id_query', 'count_structure_id_query', 'most_frequent_ss8_query', 'count_most_frequent_ss8_query' ]
-
-    Multiprocessing( l_window_size, Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads, dir_temp = dir_folder_pipeline_temp ) ) # combine result files for each window_size
+    Multiprocessing( l_window_size, Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size
 
     
     
