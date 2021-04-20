@@ -13,3 +13,4 @@ cressp.egg-info/top_level.txt
 cressp/data/__init__.py
 cressp/data/blosum62.tsv.gz
 cressp/data/parse_data.py
+cressp/main/cressp.py
