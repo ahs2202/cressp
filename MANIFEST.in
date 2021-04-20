@@ -1,4 +1,7 @@
 include cressp2/data/blosum62.tsv.gz
-exclude cressp2/data/human/uniprot.tsv.gz
 exclude cressp2/data/pdb/rcsb_pdb.tsv.gz
 exclude cressp2/data/pdb/rcsb_pdb.tsv.gz.download_completed.flag
+exclude cressp2/data/human/uniprot.tsv.gz
+exclude cressp2/data/human/uniprot.tsv.gz.download_completed.flag
+exclude cressp2/data/human/hmmdb_autoantigen.hmm.gz
+exclude cressp2/data/human/hmmdb_autoantigen.hmm.gz.download_completed.flag
