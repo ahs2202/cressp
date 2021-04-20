@@ -1,5 +1,5 @@
-# Version of cressp2 package
-__version__ = "0.0.11"
+# Version of cressp package
+__version__ = "0.0.1"
 
 # import modules
 

@@ -11,14 +11,14 @@ with open(os.path.join(HERE, "README.md")) as fid:
     README = fid.read()
 
 setup(
-    name='cressp2',
-    version='0.0.11',
+    name='cressp',
+    version='0.0.1',
     author="Hyunsu An",
     author_email="ahs2202@gm.gist.ac.kr",
     description="a program to find cross-reactive epitopes with structural information from known protein structures.",
     long_description=README,
     long_description_content_type="text/markdown",
-    url="https://github.com/ahs2202/cressp2",
+    url="https://github.com/ahs2202/cressp",
     license="GPLv3",
     packages=find_packages( ),
     include_package_data=True,

@@ -1,0 +1,15 @@
+.gitattributes
+LICENSE
+MANIFEST.in
+README.md
+setup.py
+cressp/__init__.py
+cressp.egg-info/PKG-INFO
+cressp.egg-info/SOURCES.txt
+cressp.egg-info/dependency_links.txt
+cressp.egg-info/entry_points.txt
+cressp.egg-info/requires.txt
+cressp.egg-info/top_level.txt
+cressp/data/__init__.py
+cressp/data/blosum62.tsv.gz
+cressp/data/parse_data.py
