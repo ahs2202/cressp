@@ -4,8 +4,6 @@
 from biobookshelf.main import *
 from biobookshelf import *
 
-from cressp.structural_property_estimation import Estimate_structural_property
-
 import argparse
 import traceback
 import os, sys, getopt
@@ -227,6 +225,9 @@ def Combine_result_files_for_each_window_size( dir_file_input, dir_folder_pipeli
 
 def main( ) :
     
+    
+#     PKG.Download_Data( "data/pdb/rcsb_pdb.tsv.gz", dir_remote, name_package ) # download data
+        
 #     # read dict_blosum62 from the tsv file
 #     df_blosum62 = pd.read_csv( f'{dir_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
 #     dict_blosum62 = dict( )
@@ -364,7 +365,8 @@ def main( ) :
     # create blastp_db using query_protein sequences
     dir_prefix_blastdb_protein_query = f"{dir_folder_pipeline}makeblastdb_out/protein_query"
     os.makedirs( f"{dir_folder_pipeline}makeblastdb_out/", exist_ok = True )  
-    OS_Run( [ "makeblastdb", "-in", f"{dir_folder_pipeline}protein_query.fasta", '-dbtype', 'prot', '-parse_seqids', '-max_file_sz', '1GB', '-out', dir_prefix_blastdb_protein_query ], dir_file_stdout = f"{dir_prefix_blastdb_protein_query}.makeblastdb.stdout.txt", dir_file_stderr = f"{dir_prefix_blastdb_protein_query}.makeblastdb.stderr.txt", return_output = False ) # make blast db for protein_query
+    shutil.copyfile( f"{dir_folder_pipeline}protein_query.fasta", f"{dir_prefix_blastdb_protein_query}.fasta" )
+    OS_Run( [ "makeblastdb", "-in", f"{dir_prefix_blastdb_protein_query}.fasta", '-dbtype', 'prot', '-parse_seqids', '-max_file_sz', '1GB', '-out', dir_prefix_blastdb_protein_query ], dir_file_stdout = f"{dir_prefix_blastdb_protein_query}.makeblastdb.stdout.txt", dir_file_stderr = f"{dir_prefix_blastdb_protein_query}.makeblastdb.stderr.txt", return_output = False ) # make blast db for protein_query
      
     # run blastp
     dir_file_blastp_output = f'{dir_folder_pipeline}blastp.tsv'
@@ -430,8 +432,6 @@ def main( ) :
     # use previously calculated structural properties when the default query proteins were used
     if flag_default_protein_query_was_used :
         shutil.copyfile( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', f'{dir_folder_pipeline}protein_query.tsv.gz' ) 
-        
-    Estimate_structural_property( f'{dir_folder_pipeline}protein_target.fasta', n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp ) # test 
         
     """
     Calculate similarity scores based on structural properties of proteins 
