@@ -14,3 +14,7 @@ cressp/data/__init__.py
 cressp/data/blosum62.tsv.gz
 cressp/data/parse_data.py
 cressp/main/cressp.py
+cressp/structural_property_estimation/__init__.py
+cressp/structural_property_estimation/main.py
+dist/cressp-0.0.8-py3-none-any.whl
+dist/cressp-0.0.8.tar.gz

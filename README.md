@@ -1,5 +1,19 @@
 # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
- a program to find cross-reactive epitopes with structural information from known protein structures.
+ A program to find cross-reactive epitopes with structural information from known protein structures.
+
+
+
+## Introduction
+
+Our novel pipeline, called Cross-ReactiveEpitope-Search-using-Structural-Properties-of-proteins (CRESSP), use structural information from RCSB-PDB database to search potential cross-reactive B-cell epitopes of human and pathogen proteins. 
+
+First, protein sequences of interest (provided by user) are searched with either BLASTP alone or in combination with HMMER3 with an HMM profile database built from ~5000 Pan-Proteomes from the UniProt database.
+
+Second, using pre-computed experimental and predicted relative-surface-availability (RSA) values of human protein residues, the alignment between human and pathogen proteins are further analyzed to identify potential cross-reactive B-cell epitopes. The RSA-weighted BLOSUM62 scores are calculated with an array of sliding windows (provided by user) to estimate possible cross-reactivity between two proteins.
+
+Lastly, the output file from our pipeline can be visualized interactively with web-browser-based application (similar to the interactive interface in our web-application for SARS-CoV-2, http://ahs2202.github.io/3M/)
+
+Currently, we are additionally implementing neural-network-based (bi-directional stacked RNN) surface-availability prediction module in our tool to efficiently predict RSA values of any protein sequences of interests so that CRESSP can predict B-cell cross-reactivity between any proteome of interest, including proteins from metagenome-assembled genomes.
 
 
 
