@@ -85,7 +85,7 @@ run the following command to
 2. Calculate similarity scores based on relative-surface-availability of residues of human proteins
 
 ```sh
-    cressp -t UP000464024_2697049.fasta.gz --flag_use_HMM_search --FLOAT_THRES_E_VALUE 5e-2 --cpu 2
+    cressp -t UP000464024_2697049.fasta.gz --flag_use_HMM_search --float_thres_e_value 5e-2 --cpu 2
 ```
 
 
