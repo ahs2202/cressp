@@ -1,6 +1,8 @@
 from biobookshelf.main import *
 from biobookshelf import *
 
+name_model = "Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5" # name of machine learning model used for structural property prediction
+
 def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp ) :
     """
     # 2021-04-21 20:33:45 

@@ -1,3 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 cressp/data/pdb/rcsb_pdb.tsv.gz filter=lfs diff=lfs merge=lfs -text
+cressp/data/pdb/swiss_model.tsv.gz filter=lfs diff=lfs merge=lfs -text
