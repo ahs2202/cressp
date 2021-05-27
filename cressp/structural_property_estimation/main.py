@@ -80,4 +80,12 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_output
         OS_Run( [ 'gzip', dir_file_blastp_output ], dir_file_stdout = f"{dir_file_blastp_output}.gzip.stdout.txt", dir_file_stderr = f"{dir_file_blastp_output}.gzip.stderr.txt", return_output = False ) # compress blastp output
         dir_file_blastp_output += '.gz'
         
+    """
+    Machine-Learning Model
+    """
+    # use machine-learning model to predict structural properties
+    name_file_model = 'Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5' # define the name of the model
+    PKG.Download_Data( f"structural_property_estimation/{name_file_model}", dir_remote, name_package ) # download data
+    
+    
     

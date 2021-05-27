@@ -1,0 +1,11 @@
+
+
+Building a new DB, current time: 05/27/2021 19:04:52
+New DB name:   /home/merit_an/git/cressp/cressp/data/pdb/makeblastdb_out/protein_swiss_model
+New DB title:  /home/merit_an/git/cressp/cressp/data/pdb/swiss_model.fa
+Sequence type: Protein
+Keep MBits: T
+Maximum file size: 1000000000B
+
+No volumes were created.
+
