@@ -259,6 +259,7 @@ def main( ) :
     parser.add_argument( "-e", "--float_thres_e_value", help = "(Default: 1e-20) threshold for the global alignment e-value in a scientific notation Example: 1e-3", default = "1e-20" )
     parser.add_argument( "-H", "--flag_use_HMM_search", help = "(Default: False) Set this flag to perform HMM search in addition to BLASTP search. HMM profile search is performed with HMMER3. The search usually takes several hours for metagenome-assembled genomes", action = 'store_true' )
     parser.add_argument( "-d", "--dir_file_query_hmmdb", help = "(Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file containing HMM DB of query proteins aligned against pan-proteomes", default = "human" )
+    parser.add_argument( "-S", "--flag_use_rcsb_pdb_only", help = "When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB", action = 'store_true' )
     ''' 
     currently not used
     '''
@@ -271,6 +272,7 @@ def main( ) :
         
     # parse arguments # no further processing required
     flag_use_HMM_search = args.flag_use_HMM_search
+    flag_use_rcsb_pdb_only = args.flag_use_rcsb_pdb_only
     n_threads = int( args.cpu )
     l_window_size = list( int( e ) for e in args.window_size.split( ',' ) ) # set default window size
     float_thres_e_value = float( args.float_thres_e_value )
@@ -301,14 +303,7 @@ def main( ) :
             dir_file_query_hmmdb = pkg_resources.resource_filename( name_package, 'data/human/hmmdb_autoantigen.hmm' ) # set default 'dir_file_query_hmmdb'
     else :
         
-        '''
-        <TEMPORARY
-        '''
-        print( "currently only the default human proteins are available, exiting" )
-        sys.exit( )
-        '''
-        TEMPORARY>
-        '''
+
         if flag_use_HMM_search and dir_file_query_hmmdb == 'human' :
             print( "exiting since query proteins other than default human proteins were given, the default HMM profile database cannot be used" )
             sys.exit( )
@@ -431,7 +426,14 @@ def main( ) :
     if flag_default_protein_query_was_used :
         shutil.copyfile( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', f'{dir_folder_pipeline}protein_query.tsv.gz' ) 
         
-    Estimate_structural_property( f'{dir_folder_pipeline}protein_target.fasta', n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp ) # test 
+    dict_args = dict( )
+    dict_args[ 'flag_use_rcsb_pdb_only' ] = flag_use_rcsb_pdb_only
+    dict_args[ 'n_threads' ] = n_threads
+    dict_args[ 'dir_folder_output' ] = dir_folder_output
+    dict_args[ 'dir_folder_pipeline' ] = dir_folder_pipeline
+    dict_args[ 'dir_folder_pipeline_temp' ] = dir_folder_pipeline_temp
+
+    Estimate_structural_property( f'{dir_folder_pipeline}protein_target.fasta', ** dict_args ) # test 
         
     """
     Calculate similarity scores based on structural properties of proteins 
