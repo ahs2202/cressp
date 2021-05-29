@@ -1,2 +1,2 @@
 tensorflow>=2.3.0
-biobookshelf>=0.1.15
+biobookshelf>=0.1.17

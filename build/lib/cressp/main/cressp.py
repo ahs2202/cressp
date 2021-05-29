@@ -13,6 +13,7 @@ from io import StringIO
 import time
 import math
 
+
 # search for local similarities with all human genes # 2020-10-23 17:35:34 
 def Calculate_similarity_score_using_structural_data_of_query_protein_only( dir_file_input, float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp ) :
     """
@@ -225,29 +226,29 @@ def Combine_result_files_for_each_window_size( dir_file_input, dir_folder_pipeli
 #         s_max_score.to_csv( dir_file_output_binning_by_acc_query_region__score, sep = '\t' )
 #         s_id_subsequence_with_max_score.to_csv( dir_file_output_binning_by_acc_query_region__id, sep = '\t' )
 
-def main( ) :
-    
+
+
 #     # read dict_blosum62 from the tsv file
 #     df_blosum62 = pd.read_csv( f'{dir_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
 #     dict_blosum62 = dict( )
 #     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
 #         dict_blosum62[ aa_0, aa_1 ] = score
 
-
+def main( ) :
     """
     Package settings
     """
     name_package = 'cressp'
     dir_remote = 'https://github.com/ahs2202/cressp2/raw/main/cressp/' # remote directory from which datafiles will be downloaded
     dir_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
-    
-    
+
+
     """
     Parse arguments
     """
     # fixed arguments
     float_search_thres_e_value = 30 # set e-value threshold for search (fixed for maximum sensitivity)
-    
+
     # command line arguments
     parser = argparse.ArgumentParser( description = "Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (cressp): a program to find cross-reactive epitopes with structural information from known protein structures." )
     parser.add_argument( "-t", "--dir_file_protein_target", help = "(Required) an input FASTA file containing target protein sequences." )
@@ -259,23 +260,25 @@ def main( ) :
     parser.add_argument( "-e", "--float_thres_e_value", help = "(Default: 1e-20) threshold for the global alignment e-value in a scientific notation Example: 1e-3", default = "1e-20" )
     parser.add_argument( "-H", "--flag_use_HMM_search", help = "(Default: False) Set this flag to perform HMM search in addition to BLASTP search. HMM profile search is performed with HMMER3. The search usually takes several hours for metagenome-assembled genomes", action = 'store_true' )
     parser.add_argument( "-d", "--dir_file_query_hmmdb", help = "(Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file containing HMM DB of query proteins aligned against pan-proteomes", default = "human" )
+    parser.add_argument( "-S", "--flag_use_rcsb_pdb_only", help = "When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB", action = 'store_true' )
     ''' 
     currently not used
     '''
     parser.add_argument( "-Q", "--flag_skip_struc_prop_for_protein_target", help = "(Default: False) Set this flag to skip the estimation of structural properties of target proteins. Only structural properties of query proteins will be used to calculate accessibility-weighted-similarity scores", action = 'store_true' )
-    
+
     args = parser.parse_args( )
     if args.dir_file_protein_target is None :
         print( "Required argument(s) is missing. to view help message, use -h or --help flag" )
         sys.exit( )
-        
+
     # parse arguments # no further processing required
     flag_use_HMM_search = args.flag_use_HMM_search
+    flag_use_rcsb_pdb_only = args.flag_use_rcsb_pdb_only
     n_threads = int( args.cpu )
     l_window_size = list( int( e ) for e in args.window_size.split( ',' ) ) # set default window size
     float_thres_e_value = float( args.float_thres_e_value )
     float_thres_avg_score_blosum_weighted = float( args.float_thres_avg_score_blosum_weighted ) 
-    
+
     # parse directory arguments
     dir_file_protein_target = args.dir_file_protein_target
     dir_file_protein_query = args.dir_file_protein_query
@@ -292,7 +295,7 @@ def main( ) :
             df_protein_query = pd.read_csv( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', sep = '\t' )
             dict_fasta_protein_query = df_protein_query.set_index( 'id_protein' ).seq.to_dict( )
             FASTA_Write( dir_file_protein_query, dict_fasta = dict_fasta_protein_query )
-        
+
         if flag_use_HMM_search : 
             if dir_file_query_hmmdb != 'human' :
                 print( "since query proteins is the default human proteins, the default HMM profile database will be used instead." )
@@ -300,15 +303,8 @@ def main( ) :
             PKG.Gunzip_Data( "data/human/hmmdb_autoantigen.hmm.gz", name_package ) # unzip data
             dir_file_query_hmmdb = pkg_resources.resource_filename( name_package, 'data/human/hmmdb_autoantigen.hmm' ) # set default 'dir_file_query_hmmdb'
     else :
-        
-        '''
-        <TEMPORARY
-        '''
-        print( "currently only the default human proteins are available, exiting" )
-        sys.exit( )
-        '''
-        TEMPORARY>
-        '''
+
+
         if flag_use_HMM_search and dir_file_query_hmmdb == 'human' :
             print( "exiting since query proteins other than default human proteins were given, the default HMM profile database cannot be used" )
             sys.exit( )
@@ -316,13 +312,13 @@ def main( ) :
     dir_file_protein_target = os.path.abspath( dir_file_protein_target )
     dir_file_protein_query = os.path.abspath( dir_file_protein_query )
     dir_file_query_hmmdb = os.path.abspath( dir_file_query_hmmdb )
-    
+
     # handle default setting for the output folder
     if dir_folder_output == 'default' :
         dir_folder_output = f"{os.getcwd( )}/cressp_out/" # set default output folder
     # get absolute paths for folder arguments        
     dir_folder_output = os.path.abspath( dir_folder_output )
-    
+
     # handle output folder
     if dir_folder_output[ -1 ] != '/' : # last character of a directory should be '/'
         dir_folder_output += '/'
@@ -336,8 +332,8 @@ def main( ) :
     os.makedirs( dir_folder_pipeline, exist_ok = True )
     dir_folder_pipeline_temp = f'{dir_folder_pipeline}temp/' 
     os.makedirs( dir_folder_pipeline_temp, exist_ok = True )
-    
-    
+
+
     """
     Read and move input protein Fasta files
     """
@@ -348,7 +344,7 @@ def main( ) :
     except :
         print( f"exiting due to an error while reading and moving 'dir_file_protein_query' {dir_file_protein_query}" )
         sys.exit( )
-        
+
     try :
         dict_fasta_protein_target = FASTA_Read( dir_file_protein_target )
         FASTA_Write( f"{dir_folder_pipeline}protein_target.fasta", dict_fasta = dict_fasta_protein_target )
@@ -356,7 +352,7 @@ def main( ) :
     except :
         print( f"exiting due to an error while reading and moving 'dir_file_protein_target' {dir_file_protein_target}" )
         sys.exit( )
-    
+
 
     """
     Perform BLASTP alignment
@@ -365,14 +361,14 @@ def main( ) :
     dir_prefix_blastdb_protein_query = f"{dir_folder_pipeline}makeblastdb_out/protein_query"
     os.makedirs( f"{dir_folder_pipeline}makeblastdb_out/", exist_ok = True )  
     OS_Run( [ "makeblastdb", "-in", f"{dir_folder_pipeline}protein_query.fasta", '-dbtype', 'prot', '-parse_seqids', '-max_file_sz', '1GB', '-out', dir_prefix_blastdb_protein_query ], dir_file_stdout = f"{dir_prefix_blastdb_protein_query}.makeblastdb.stdout.txt", dir_file_stderr = f"{dir_prefix_blastdb_protein_query}.makeblastdb.stderr.txt", return_output = False ) # make blast db for protein_query
-     
+
     # run blastp
     dir_file_blastp_output = f'{dir_folder_pipeline}blastp.tsv'
     OS_Run( [ 'blastp', '-query', dir_file_protein_target, '-db', dir_prefix_blastdb_protein_query, '-out', dir_file_blastp_output, '-outfmt', '6 qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore btop', '-num_threads', f'{n_threads}', '-evalue', f'{float_search_thres_e_value}' ], dir_file_stdout = f"{dir_folder_pipeline}blastp.stdout.txt", dir_file_stderr = f"{dir_folder_pipeline}blastp.stderr.txt", return_output = False ) # run blastp
     OS_Run( [ 'gzip', dir_file_blastp_output ], dir_file_stdout = f"{dir_file_blastp_output}.gzip.stdout.txt", dir_file_stderr = f"{dir_file_blastp_output}.gzip.stderr.txt", return_output = False ) # compress blastp output
     dir_file_blastp_output += '.gz'
-    
-    
+
+
     """
     Perform HMMER alignment using a given HMM profile DB (using a couple of HMM profile DBs would be also helpful in the near future)
     """
@@ -380,13 +376,13 @@ def main( ) :
     if flag_use_HMM_search : 
         dir_file_hmmsearch_output = f'{dir_folder_pipeline}hmmsearch.out'
         OS_Run( [ 'hmmsearch', '-o', dir_file_hmmsearch_output, '--acc', '--notextw', '--cpu', f'{n_threads}', '-E', f'{float_search_thres_e_value}', dir_file_query_hmmdb, dir_file_protein_target ], dir_file_stdout = f"{dir_folder_pipeline}hmmsearch.stdout.txt", dir_file_stderr = f"{dir_folder_pipeline}hmmsearch.stderr.txt", return_output = False ) # run hmmsearch
-            
+
     """
     Combine BLASTP and HMMSEARCH outputs 
     """
     dir_file_matched = f'{dir_folder_pipeline}matched.tsv.gz'
     dir_file_matched_write_complete_flag = f"{dir_file_matched}.write_completed.flag" # a flag indicating the write operation of the file has been completed.
-    
+
     # load blastp result
     dict_qacc_to_seq = FASTA_Read( dir_file_protein_target ) # read query protein sequences
     dict_qacc_to_seq = dict( ( header.split( ' ', 1 )[ 0 ], dict_qacc_to_seq[ header ] ) for header in list( dict_qacc_to_seq ) )
@@ -395,7 +391,7 @@ def main( ) :
     df_blastp.pident = df_blastp.pident / 100
     df_blastp.columns = [ 'query_accession', 'target_accession', 'query_start', 'query_end', 'target_start', 'target_end', 'query_alignment', 'target_alignment', 'e_value', 'identity' ]
     df_blastp[ 'source' ] = 'blastp'
-    
+
     # load hmmer result according to 'flag_use_HMM_search' flag
     if flag_use_HMM_search : 
         df = HMMER_HMMSEARCH_Read_output( dir_file_hmmsearch_output )
@@ -416,7 +412,7 @@ def main( ) :
         df_hmmer = df_hmmer[ [ 'query_accession', 'target_accession', 'query_start', 'query_end', 'target_start', 'target_end', 'query_alignment', 'target_alignment', 'conditional_Evalue', 'accuracy' ] ] # subset common columns
         df_hmmer.columns = [ 'query_accession', 'target_accession', 'query_start', 'query_end', 'target_start', 'target_end', 'query_alignment', 'target_alignment', 'e_value', 'identity' ] # rename columns
         df_hmmer[ 'source' ] = 'hmmer' 
-    
+
     df_matched = pd.concat( [ df_hmmer, df_blastp ], ignore_index = True ) if flag_use_HMM_search else df_blastp
     df_matched.to_csv( dir_file_matched, sep = '\t', index = False )
 
@@ -425,14 +421,17 @@ def main( ) :
         file.write( f"search results were written at {TIME_GET_timestamp( )}" )
 
     """
-    Estimate structural properties of proteins (to be implemented)
+    Estimate structural properties of proteins 
     """
     # use previously calculated structural properties when the default query proteins were used
     if flag_default_protein_query_was_used :
         shutil.copyfile( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', f'{dir_folder_pipeline}protein_query.tsv.gz' ) 
-        
-    Estimate_structural_property( f'{dir_folder_pipeline}protein_target.fasta', n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp ) # test 
-        
+
+    for dir_file_protein in [ f'{dir_folder_pipeline}protein_target.fasta' ] :
+        Estimate_structural_property( dir_file_protein, n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only )
+
+
+
     """
     Calculate similarity scores based on structural properties of proteins 
     """
@@ -442,21 +441,20 @@ def main( ) :
     print( f"number of records: {len( df )}" )
     df = df[ df.e_value <= float_thres_e_value ] # drop entries with too low global similarity
     print( f"number of records after filtering: {len( df )}" )
-    
+
     l_uuid_process = Multiprocessing( df, Calculate_similarity_score_using_structural_data_of_query_protein_only, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp ] ) # process similarity search result with multiple processes, and collect uuid of the processes
-    
-    
+
+
     # combine output files for each window size
     Multiprocessing( l_window_size, Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size
 
-    
-    
-#     # Bin similarity scores by acc_query and a given binning size for analysis
-#     size_window_binning = 100
-#     size_overlap_binning = 50
-    
-#     Multiprocessing( l_window_size, Bin_Similarity_Scores, n_threads = min( len( l_window_size ), int( OS_Memory( )[ 'MemAvailable' ] / 1e7 ) ), dir_temp = dir_folder_pipeline_temp ) # combine result files for each window_size
 
+
+    #     # Bin similarity scores by acc_query and a given binning size for analysis
+    #     size_window_binning = 100
+    #     size_overlap_binning = 50
+
+    #     Multiprocessing( l_window_size, Bin_Similarity_Scores, n_threads = min( len( l_window_size ), int( OS_Memory( )[ 'MemAvailable' ] / 1e7 ) ), dir_temp = dir_folder_pipeline_temp ) # combine result files for each window_size
 
 
 
