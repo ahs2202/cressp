@@ -422,7 +422,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_output
     import tensorflow as tf
     from tensorflow.keras import layers
 
-    for dir_file_model, x_data, meta_data, str_datatype in zip( [ f"{dir_folder_cressp}{file_name_model_rsa}", f"{dir_folder_cressp}{file_name_model_ss8}" ], [ x_rsa, x_ss8 ], [ meta_rsa, meta_ss8 ], [ 'acc', 'ss8' ] ) :
+    for dir_file_model, x_data, meta_data, str_datatype in zip( [ f"{dir_folder_cressp}structural_property_estimation/{file_name_model_rsa}", f"{dir_folder_cressp}structural_property_estimation/{file_name_model_ss8}" ], [ x_rsa, x_ss8 ], [ meta_rsa, meta_ss8 ], [ 'acc', 'ss8' ] ) :
 
         model = tf.keras.models.load_model( dir_file_model )
 
