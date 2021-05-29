@@ -1,6 +1,6 @@
 include cressp/data/blosum62.tsv.gz
-exclude cressp/structural_property_estimation/Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5
-exclude cressp/structural_property_estimation/Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5.download_completed.flag
+exclude cressp/structural_property_estimation/RSA.Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5
+exclude cressp/structural_property_estimation/RSA.Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5.download_completed.flag
 exclude cressp/data/pdb/swiss_model.tsv.gz
 exclude cressp/data/pdb/swiss_model.tsv.gz.download_completed.flag
 exclude cressp/data/pdb/rcsb_pdb.tsv.gz

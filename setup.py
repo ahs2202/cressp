@@ -24,7 +24,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'tensorflow>=2.3.0',
-        'biobookshelf>=0.1.15',
+        'biobookshelf>=0.1.17',
     ],
     entry_points={
         "console_scripts": [
