@@ -19,12 +19,14 @@ Currently, we are additionally implementing neural-network-based (bi-directional
 
 ## Installation 
 
-CRESSP requires BLASTP from BLAST+ and HMMER3, which can be installed through conda with the following commands:
+CRESSP requires BLASTP from BLAST+ (v2.10.1+) and HMMER3, which can be installed through conda with the following commands:
 
 ```sh
     conda install -c bioconda blast
     conda install -c bioconda hmmer
 ```
+
+BLAST+ binaries can be also downloaded from [here](https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/).
 
 CRESSP can be installed from PyPI (https://pypi.org/project/cressp/)
 
@@ -32,7 +34,7 @@ CRESSP can be installed from PyPI (https://pypi.org/project/cressp/)
     pip install cressp
 ```
 
-
+CRESSP use TensorFlow (>2.3.0) for prediction of relative surface area (RSA) and secondary structure classification. If CUDA-enabled GPU is available, CRESSP will automatically use GPU for prediction of structural properties of input proteins.
 
 
 
