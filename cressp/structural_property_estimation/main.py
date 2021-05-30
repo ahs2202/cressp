@@ -1,6 +1,8 @@
 from biobookshelf.main import *
 from biobookshelf import *
 
+pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
+
 import tensorflow as tf
 from tensorflow.keras import layers
 

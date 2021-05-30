@@ -1,10 +1,14 @@
 #!/usr/bin/env python
-# 20210419
+
 
 from biobookshelf.main import *
 from biobookshelf import *
 
+pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
+
 from cressp.structural_property_estimation import Estimate_structural_property
+
+from cressp.cross_reactivity_prediction import Calculate_Similarity_Scores_in_Aligned_Sequences, Combine_result_files_for_each_window_size
 
 import argparse
 import traceback
@@ -12,220 +16,6 @@ import os, sys, getopt
 from io import StringIO
 import time
 import math
-
-
-# search for local similarities with all human genes # 2020-10-23 17:35:34 
-def Calculate_similarity_score_using_structural_data_of_query_protein_only( dir_file_input, float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp ) :
-    """
-    # Calculate_similarity_score_using_structural_data_of_query_protein_only
-    """
-    uuid_process = UUID( ) # uuid of current process
-    np.warnings.filterwarnings( 'ignore' )
-
-    # weighted similarity scoring of aligned sequences of a given window size
-    dict_kw_rsa = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = 0, value_max = 1 )
-    dict_kw_torsion_angle = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = -180, value_max = 180 )
-    dict_kw_ss8 = dict( ascii_min = 33, ascii_max = 41, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 8 )
-    dict_kw_datatype = dict( ascii_min = 33, ascii_max = 36, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 3 )
-
-     
-    df_protein_query = pd.read_csv( f'{dir_folder_pipeline}protein_query.tsv.gz', sep = '\t' ) # # load structural property data for query sequences
-    dict_acc_to_arr_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa )
-    dict_acc_to_arr_datatype_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
-    dict_acc_to_arr_phi_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
-    dict_acc_to_arr_psi_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
-    dict_acc_to_arr_ss8_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].dropna( ).to_dict( ), ** dict_kw_ss8 )
-    dict_acc_to_arr_datatype_ss8_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'ss8_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
-    dict_fasta = df_protein_query.set_index( 'id_protein' )[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
-    dict_acc_to_arr_structure_id_query = dict( ( acc, Decode_List_of_Strings( dict_fasta[ acc ] ) ) for acc in dict_fasta )
-
-    # prepare Blosum62 score matrix including all non-conventional annotations of amino acids # 2020-10-29 02:15:32 
-    # read dict_blosum62 from the tsv file
-    df_blosum62 = pd.read_csv( f'{dir_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
-    dict_blosum62 = dict( )
-    for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
-        dict_blosum62[ aa_0, aa_1 ] = score
-
-    # list of ss8 classifications
-    l_ss8 = [ 'G', 'H', 'I', 'E', 'B', 'T', 'S', 'C' ]
-    
-    df_matched = pd.read_csv( dir_file_input, sep = '\t' )
-    l_l_output_file = list( )
-    for int_window_size in l_window_size :
-        dir_file_output = f"{dir_folder_pipeline_temp}{uuid_process}_window_size_{int_window_size}.tsv.gz"
-        file_output = gzip.open( dir_file_output, 'wb' )
-        l_col = [ 'id_alignment', 'alignment_start', 'alignment_end', 'query_start', 'query_end', 'target_start', 'target_end', 'score_blosum', 'score_blosum_weighted', 'sum_of_weights', 'n_residues_acc', 'prop_pdb_evidence_query', 'structure_id_query', 'count_structure_id_query', 'most_frequent_ss8_query', 'count_most_frequent_ss8_query' ]
-        file_output.write( ( '\t'.join( l_col ) + '\n' ).encode( ) ) # write header to the output file
-        n_errors = 0
-        df = df_matched
-        df = df[ df.query_alignment.apply( len ) >= int_window_size ] # drop entries with alignment shorter than the 'int_window_size'
-        l_l_value = list( )
-        for id_alignment, query_accession, target_accession, query_start, query_end, target_start, target_end, query_alignment, target_alignment, e_value, identity, source in df[ [ 'id_alignment', 'query_accession', 'target_accession', 'query_start', 'query_end', 'target_start', 'target_end', 'query_alignment', 'target_alignment', 'e_value', 'identity', 'source' ] ].values :
-            try :
-                if query_accession not in dict_acc_to_arr_acc_query : continue # if accession does not exist, skip the entry
-                arr_acc_query = dict_acc_to_arr_acc_query[ query_accession ]
-                arr_acc_datatype_query = dict_acc_to_arr_datatype_acc_query[ query_accession ]
-                arr_ss8_query = dict_acc_to_arr_ss8_query[ query_accession ]
-                arr_ss8_datatype_query = dict_acc_to_arr_datatype_ss8_query[ query_accession ]
-
-                len_seq_query, len_alignment = len( arr_acc_query ), len( query_alignment ) # retrieve lengths of sequences and alignment
-                arr_phi_query = dict_acc_to_arr_phi_query[ query_accession ] if query_accession in dict_acc_to_arr_phi_query else np.full( len_seq_query, np.nan ) # phi and psi data might not be available for all query and target sequences. if the data is not available, use an empty array (array filled with np.nan) as phi and psi data
-                arr_psi_query = dict_acc_to_arr_psi_query[ query_accession ] if query_accession in dict_acc_to_arr_psi_query else np.full( len_seq_query, np.nan )
-                arr_structure_id_query = dict_acc_to_arr_structure_id_query[ query_accession ] if query_accession in dict_acc_to_arr_structure_id_query else np.full( len_seq_query, np.nan )
-
-                arr_alignment_score_blosum, arr_alignment_acc_query, arr_alignment_acc_datatype_query, arr_alignment_ss8_query, arr_alignment_ss8_datatype_query, arr_alignment_phi_query, arr_alignment_psi_query = np.full( ( 6 + 1, len_alignment ), np.nan, dtype = float ) # initialize arrays for containing scores of alignment and structural properties of aligned target and query sequences # np.nan represents invalid values.
-                arr_alignment_structure_id_query = np.full( len_alignment, np.nan, dtype = object )
-                arr_alignment_gap = np.zeros( len_alignment, dtype = bool ) # True when the position contain a gap
-                index_pos_in_query, index_pos_in_target = query_start - 1, target_start - 1 # 0-based coordinates        
-                for index_pos_in_alignment, residue_query, residue_target in zip( np.arange( len_alignment ), query_alignment.upper( ), target_alignment.upper( ) ) : 
-                    arr_alignment_score_blosum[ index_pos_in_alignment ] = dict_blosum62[ residue_query, residue_target ]
-                    if residue_query == '-' : # ignore gaps in the alignment for retrieving aligned structural properties, except for RSA values and datatypes for RSA values (RSA values in the gaps are used as weights of the gap penalty score)
-                        arr_alignment_acc_query[ index_pos_in_alignment ] = 1 # gaps were filled with 1 to use blosom gap score without weight 
-                        arr_alignment_acc_datatype_query[ index_pos_in_alignment ] = np.nan # put invalid datatype value to a position with gap
-                        arr_alignment_gap[ index_pos_in_alignment ] = True
-                        index_pos_in_target += 1 
-                    elif residue_target == '-' : 
-                        arr_alignment_acc_query[ index_pos_in_alignment ] = arr_acc_query[ index_pos_in_query ]
-                        arr_alignment_acc_datatype_query[ index_pos_in_alignment ] = arr_acc_datatype_query[ index_pos_in_query ]
-                        arr_alignment_gap[ index_pos_in_alignment ] = True
-                        index_pos_in_query += 1
-                    else :
-                        arr_alignment_acc_query[ index_pos_in_alignment ] = arr_acc_query[ index_pos_in_query ]
-                        arr_alignment_acc_datatype_query[ index_pos_in_alignment ] = arr_acc_datatype_query[ index_pos_in_query ]
-                        arr_alignment_ss8_query[ index_pos_in_alignment ] = arr_ss8_query[ index_pos_in_query ]
-                        arr_alignment_ss8_datatype_query[ index_pos_in_alignment ] = arr_ss8_datatype_query[ index_pos_in_query ]
-                        arr_alignment_phi_query[ index_pos_in_alignment ] = arr_phi_query[ index_pos_in_query ]
-                        arr_alignment_psi_query[ index_pos_in_alignment ] = arr_psi_query[ index_pos_in_query ]
-                        arr_alignment_structure_id_query[ index_pos_in_alignment ] = arr_structure_id_query[ index_pos_in_query ]
-                        index_pos_in_query += 1
-                        index_pos_in_target += 1
-                arr_alignment_acc_query_scaled = arr_alignment_acc_query * 2 # scale relative accessible surface area values (multiply with 2 and replace values > 1 with 1)
-                arr_alignment_acc_query_scaled[ arr_alignment_acc_query_scaled > 1 ] = 1
-                arr_alignment_acc_weight = arr_alignment_acc_query_scaled
-                arr_alignment_score_blosum_weighted = arr_alignment_score_blosum * arr_alignment_acc_weight
-                mask_gap = np.isnan( arr_alignment_score_blosum_weighted )
-                if mask_gap.sum( ) > 1 : # detect residues where surface availability data is unavailable
-#                     print( f'surface availability data unavailable for {mask_gap.sum( )} residues' )
-#                     print( 'sample_id\t', sample_id, 'id_alignment\t', id_alignment, 'query_accession\t', query_accession, 'target_accession\t', target_accession, 'query_start\t', query_start, 'query_end\t', query_end, 'target_start\t', target_start, 'target_end\t', target_end, 'query_alignment\t', query_alignment, 'target_alignment\t', target_alignment, 'e_value\t', e_value, 'identity\t', identity, 'source\t', source )
-                    continue
-                arr_alignment_acc_query_scaled[ arr_alignment_gap ] = np.nan # reassign RSA value of the positions containing gaps to np.nan (representing invalid value) for calculation of similarity score based on RSA values
-
-                n_windows = len_alignment + 1 - int_window_size
-                for index_pos_start in range( n_windows ) : 
-                    slice_window = slice( index_pos_start, index_pos_start + int_window_size )
-                    float_score_blosum_for_window = arr_alignment_score_blosum[ slice_window ].sum( )
-                    float_score_blosum_weighted_for_window = arr_alignment_score_blosum_weighted[ slice_window ].sum( )
-                    arr_alignment_acc_weight_for_window = arr_alignment_acc_weight[ slice_window ]
-                    float_sum_of_acc_weights = arr_alignment_acc_weight_for_window[ ~ np.isnan( arr_alignment_acc_weight_for_window ) ].sum( ) # calculate total sum of weights
-
-                    arr_alignment_acc_datatype_query_for_window = arr_alignment_acc_datatype_query[ slice_window ]
-                    arr_alignment_acc_datatype_query_for_window_valid = arr_alignment_acc_datatype_query_for_window[ ~ np.isnan( arr_alignment_acc_datatype_query_for_window ) ] # drop invalid datatype values
-                    float_prop_pdb_evidence_query = ( arr_alignment_acc_datatype_query_for_window_valid == 2 ).sum( ) / len( arr_alignment_acc_datatype_query_for_window_valid ) if len( arr_alignment_acc_datatype_query_for_window_valid ) > 0 else np.nan # calculate proportion of residues supported by PDB structures
-
-                    n_aligned_residues_for_window = int_window_size - np.sum( arr_alignment_gap[ slice_window ] ) # retrieve number of aligne residue in the alignment
-
-                    structure_id_query, count_structure_id_query = DICTIONARY_Find_Max( COUNTER( arr_alignment_structure_id_query[ slice_window ] ) )
-                    # find major secondary structure classification for the current window
-                    arr_alignment_ss8_query_for_window = arr_alignment_ss8_query[ slice_window ]
-                    arr_alignment_ss8_query_for_window_valid = arr_alignment_ss8_query_for_window[ ~ np.isnan( arr_alignment_ss8_query_for_window ) ].astype( int )
-                    id_ss8_most_frequent_query, count_id_ss8_most_frequent_query = DICTIONARY_Find_Max( COUNTER( arr_alignment_ss8_query_for_window_valid, ignore_float = True ) )
-
-                    if structure_id_query is None and count_structure_id_query is None : structure_id_query, count_structure_id_query = np.nan, np.nan # retrieve structure_id of most frequence PDB structure (either from RCSB PDB or structural model)
-                    if id_ss8_most_frequent_query is None and count_id_ss8_most_frequent_query is None :
-                        str_ss8_query, id_ss8_most_frequent_query, count_id_ss8_most_frequent_query = np.nan, np.nan, np.nan
-                    else :
-                        id_ss8_most_frequent_query = int( id_ss8_most_frequent_query )
-                        str_ss8_query = l_ss8[ id_ss8_most_frequent_query ]
-
-                    query_alignment_subsequence = query_alignment[ slice_window ]
-                    target_alignment_subsequence = target_alignment[ slice_window ]
-                    int_gap_count_subsequence_query, int_gap_count_subsequence_target = query_alignment_subsequence.count( '-' ), target_alignment_subsequence.count( '-' )
-                    int_gap_count_before_subsequence_query, int_gap_count_before_subsequence_target = query_alignment[ : index_pos_start ].count( '-' ), target_alignment[ : index_pos_start ].count( '-' )
-
-                    if float_score_blosum_for_window < 0 and float_score_blosum_weighted_for_window < 0 : continue # do not write subsequence whose blosum score or weighted blosum scores is below 0
-                    if float_score_blosum_weighted_for_window < float_thres_avg_score_blosum_weighted * int_window_size : continue # filter records with low avg alignment score weighted with accessiblities
-                    l = [ id_alignment, index_pos_start + 1, index_pos_start + int_window_size, query_start + index_pos_start - int_gap_count_before_subsequence_query, query_start + index_pos_start + int_window_size - 1 - int_gap_count_subsequence_query - int_gap_count_before_subsequence_query, target_start + index_pos_start - int_gap_count_before_subsequence_target, target_start + index_pos_start + int_window_size - 1 - int_gap_count_subsequence_target - int_gap_count_before_subsequence_target, np.round( float_score_blosum_for_window, 3 ), np.round( float_score_blosum_weighted_for_window, 3 ), np.round( float_sum_of_acc_weights, 3 ), n_aligned_residues_for_window, float_prop_pdb_evidence_query, structure_id_query, count_structure_id_query, str_ss8_query, count_id_ss8_most_frequent_query ]
-                    file_output.write( ( '\t'.join( list( map( str, l ) ) ) + '\n' ).encode( ) )
-            except Exception as e : # count errors
-                n_errors += 1
-                print( f"error number {n_errors}", traceback.format_exc( ) )
-        file_output.close( )
-    return uuid_process
-    
-def Combine_result_files_for_each_window_size( dir_file_input, dir_folder_pipeline, dir_folder_pipeline_temp ) :
-    """
-    combine result files for each window_size
-    """
-    for arr_input in pd.read_csv( dir_file_input, sep = '\t', header = None ).values :
-        int_window_size = arr_input[ 0 ]
-        l_dir_file = glob.glob( f"{dir_folder_pipeline_temp}*_window_size_{int_window_size}.tsv.gz" ) # retrieve list of output files to combine into a single output file
-        dir_file_output_combining = f'{dir_folder_pipeline}subsequence__window_size_{int_window_size}__struc_data_query_only.combining.tsv.gz'
-        dir_file_output_combining_completed = f'{dir_folder_pipeline}subsequence__window_size_{int_window_size}__struc_data_query_only.tsv.gz'
-        l_col = [ 'id_alignment', 'alignment_start', 'alignment_end', 'query_start', 'query_end', 'target_start', 'target_end', 'score_blosum', 'score_blosum_weighted', 'sum_of_weights', 'n_residues_acc', 'prop_pdb_evidence_query', 'structure_id_query', 'count_structure_id_query', 'most_frequent_ss8_query', 'count_most_frequent_ss8_query' ]
-        OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, header = '\t'.join( l_col ) + '\n', remove_n_lines = 1 )
-        print( f"combining output files for window size {int_window_size} is completed" )
-        os.rename( dir_file_output_combining, dir_file_output_combining_completed ) # rename the file once completed
-    
-    
-# def Bin_Similarity_Scores( dir_file_input ) :
-#     """
-#     # 2021-03-31 13:01:07 
-#     bin similarity scores 
-#     """
-#     for arr_input in pd.read_csv( dir_file_input, header = None, sep = '\t' ).values :
-#         int_window_size = int( arr_input[ 0 ] )
-#         df_matched = pd.read_csv( dir_file_matched, sep = '\t', low_memory = False )
-#         df_subsequence = pd.read_csv( f'{dir_folder_pipeline}subsequence__window_size_{int_window_size}__struc_data_human_only.tsv.gz', sep = '\t', low_memory = False )
-#         df_subsequence.index.name = 'id_subsequence'
-#         df_subsequence.reset_index( drop = False, inplace = True )
-#         df = df_subsequence[ [ 'id_subsequence', "query_start", "query_end", 'score_blosum_weighted' ] ]
-#         m = MAP.Map( df_matched.query_accession.to_dict( ) )
-#         df[ 'acc_query' ] = df_subsequence.id_alignment.apply( m.a2b )
-        
-#         # Bin similarity scores by acc_query for analysis
-#         s = df[ [ 'score_blosum_weighted', 'acc_query' ] ].groupby( 'acc_query' ).max( ).score_blosum_weighted
-#         dir_file_output = f"{dir_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_accession.tsv.gz"
-#         s.to_csv( dir_file_output, sep = '\t' )
-        
-#         # Binning by 100 amino acid long region of acc_query with 50 amino acid overlaps
-#         # build interval trees for score binning
-#         df_uniprot_humans = pd.read_csv( dir_file_human_protein_db, sep = '\t' ) # load human proteins used for sequence similarity search
-#         dict_acc_to_it = dict( )
-#         for acc, length in df_uniprot_humans[ [ 'id_protein', 'seq_length' ] ].values :
-#             dict_acc_to_it[ acc ] = intervaltree.IntervalTree( )
-#             start = 0
-#             while True :
-#                 dict_acc_to_it[ acc ].addi( start, start + size_window_binning, [ f"{acc}_from_{start + 1}_to_{min( start + size_window_binning, length )}" ] )
-#                 if start + size_window_binning >= length :  
-#                     break
-#                 else :
-#                     start += size_window_binning - size_overlap_binning
-#         # retrieve max_score and id_subsequence with the max_score for each id_feature (interval)
-#         dict_id_feature_to_max_score = dict( )
-#         dict_id_feature_to_id_subsequence_with_max_score = dict( )
-#         for id_subsequence, query_start, query_end, score_blosum_weighted, acc_query in df[ [ 'id_subsequence', "query_start", "query_end", 'score_blosum_weighted', 'acc_query' ] ].values :
-#             if acc_query not in dict_acc_to_it : continue 
-#             it = dict_acc_to_it[ acc_query ]
-#             id_feature = list( it.at( query_start - 1 ).intersection( it.at( query_end - 1 ) ) )[ 0 ][ 2 ][ 0 ]
-#             if id_feature not in dict_id_feature_to_max_score :
-#                 dict_id_feature_to_max_score[ id_feature ] = score_blosum_weighted
-#                 dict_id_feature_to_id_subsequence_with_max_score[ id_feature ] = id_subsequence
-#             else :
-#                 if dict_id_feature_to_max_score[ id_feature ] < score_blosum_weighted : # update id_subsequence with max score
-#                     dict_id_feature_to_max_score[ id_feature ] = score_blosum_weighted
-#                     dict_id_feature_to_id_subsequence_with_max_score[ id_feature ] = id_subsequence
-#         s_max_score = pd.Series( dict_id_feature_to_max_score )
-#         s_max_score.index.name = 'id_feature'
-#         s_max_score.name = "score_blosum_weighted"
-#         s_id_subsequence_with_max_score = pd.Series( dict_id_feature_to_id_subsequence_with_max_score )
-#         s_id_subsequence_with_max_score.index.name = 'id_feature'
-#         s_id_subsequence_with_max_score.name = "id_subsequence"
-        
-#         dir_file_output_binning_by_acc_query_region__score = f"{dir_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_{size_window_binning}_overlap_{size_overlap_binning}.score.tsv.gz"
-#         dir_file_output_binning_by_acc_query_region__id = f"{dir_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_{size_window_binning}_overlap_{size_overlap_binning}.id.tsv.gz"
-#         s_max_score.to_csv( dir_file_output_binning_by_acc_query_region__score, sep = '\t' )
-#         s_id_subsequence_with_max_score.to_csv( dir_file_output_binning_by_acc_query_region__id, sep = '\t' )
-
 
 
 #     # read dict_blosum62 from the tsv file
@@ -261,10 +51,7 @@ def main( ) :
     parser.add_argument( "-H", "--flag_use_HMM_search", help = "(Default: False) Set this flag to perform HMM search in addition to BLASTP search. HMM profile search is performed with HMMER3. The search usually takes several hours for metagenome-assembled genomes", action = 'store_true' )
     parser.add_argument( "-d", "--dir_file_query_hmmdb", help = "(Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file containing HMM DB of query proteins aligned against pan-proteomes", default = "human" )
     parser.add_argument( "-S", "--flag_use_rcsb_pdb_only", help = "When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB", action = 'store_true' )
-    ''' 
-    currently not used
-    '''
-    parser.add_argument( "-Q", "--flag_skip_struc_prop_for_protein_target", help = "(Default: False) Set this flag to skip the estimation of structural properties of target proteins. Only structural properties of query proteins will be used to calculate accessibility-weighted-similarity scores", action = 'store_true' )
+    parser.add_argument( "-Q", "--flag_only_use_structural_properties_of_query_proteins", help = "Only use estimated structural properties of the query proteins when predicting cross-reactivity between target and query proteins (skip the estimation of structural properties of target proteins). When 'dir_file_protein_query' == 'human' (default value), it will significantly reduce computation time by skipping estimation and prediction steps of structural properties of target & query proteins.", action = 'store_true' )
 
     args = parser.parse_args( )
     if args.dir_file_protein_target is None :
@@ -274,7 +61,8 @@ def main( ) :
     # parse arguments # no further processing required
     flag_use_HMM_search = args.flag_use_HMM_search
     flag_use_rcsb_pdb_only = args.flag_use_rcsb_pdb_only
-    n_threads = int( args.cpu )
+    flag_only_use_structural_properties_of_query_proteins = args.flag_only_use_structural_properties_of_query_proteins
+    n_threads = min( int( args.cpu ), int( multiprocessing.cpu_count( ) ) ) # max number of n_threads is the CPU number of the current local machine
     l_window_size = list( int( e ) for e in args.window_size.split( ',' ) ) # set default window size
     float_thres_e_value = float( args.float_thres_e_value )
     float_thres_avg_score_blosum_weighted = float( args.float_thres_avg_score_blosum_weighted ) 
@@ -426,10 +214,10 @@ def main( ) :
     # use previously calculated structural properties when the default query proteins were used
     if flag_default_protein_query_was_used :
         shutil.copyfile( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', f'{dir_folder_pipeline}protein_query.tsv.gz' ) 
-
-    for dir_file_protein in [ f'{dir_folder_pipeline}protein_target.fasta' ] :
-        Estimate_structural_property( dir_file_protein, n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only )
-
+    # estimate structural properties
+    for name_file in [ 'protein_target', 'protein_query' ] :
+        if not os.path.exists( f'{dir_folder_pipeline}{name_file}.tsv.gz' ) :
+            Estimate_structural_property( f'{dir_folder_pipeline}{name_file}.fasta', n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only )
 
 
     """
@@ -442,8 +230,9 @@ def main( ) :
     df = df[ df.e_value <= float_thres_e_value ] # drop entries with too low global similarity
     print( f"number of records after filtering: {len( df )}" )
 
-    l_uuid_process = Multiprocessing( df, Calculate_similarity_score_using_structural_data_of_query_protein_only, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp ] ) # process similarity search result with multiple processes, and collect uuid of the processes
 
+    # predict cross-reactivity
+    l_uuid_process = Multiprocessing( df, Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
 
     # combine output files for each window size
     Multiprocessing( l_window_size, Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size
