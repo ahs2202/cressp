@@ -28,7 +28,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "cressp=cressp.main.cressp:main",
+            "cressp=cressp.__main__:cressp",
         ]
     },
 )

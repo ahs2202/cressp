@@ -24,7 +24,11 @@ import math
 #     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
 #         dict_blosum62[ aa_0, aa_1 ] = score
 
-def main( ) :
+def cressp( ) :
+    """
+    The main function of Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
+    """
+    
     """
     Package settings
     """
@@ -254,5 +258,5 @@ def main( ) :
 
     
 if __name__ == "__main__" :
-    main( )
+    cressp( ) # run CRESSP at the top-level environment
     

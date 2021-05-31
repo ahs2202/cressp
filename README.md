@@ -1,11 +1,14 @@
+![CRESSP Logo](https://raw.githubusercontent.com/ahs2202/cressp/master/documentation/cressp_logo.PNG)
+
 # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
+
  A program to find cross-reactive epitopes with structural information from known protein structures.
 
 
 
 ## Introduction
 
-Our novel pipeline, called Cross-ReactiveEpitope-Search-using-Structural-Properties-of-proteins (CRESSP), use structural information from RCSB-PDB database to search potential cross-reactive B-cell epitopes of human and pathogen proteins. 
+Our new pipeline, called Cross-ReactiveEpitope-Search-using-Structural-Properties-of-proteins (CRESSP), use structural information from RCSB-PDB database to search potential cross-reactive B-cell epitopes of human and pathogen proteins. 
 
 First, protein sequences of interest (provided by user) are searched with either BLASTP alone or in combination with HMMER3 with an HMM profile database built from ~5000 Pan-Proteomes from the UniProt database.
 
@@ -19,7 +22,7 @@ Currently, we are additionally implementing neural-network-based (bi-directional
 
 ## Installation 
 
-CRESSP requires BLASTP from BLAST+ (v2.10.1+) and HMMER3, which can be installed through conda with the following commands:
+CRESSP requires BLASTP from **BLAST+ (v2.10.1+)** and HMMER3, which can be installed through conda with the following commands:
 
 ```sh
     conda install -c bioconda blast
@@ -34,11 +37,13 @@ CRESSP can be installed from PyPI (https://pypi.org/project/cressp/)
     pip install cressp
 ```
 
-CRESSP use TensorFlow (>2.3.0) for prediction of relative surface area (RSA) and secondary structure classification. If CUDA-enabled GPU is available, CRESSP will automatically use GPU for prediction of structural properties of input proteins.
+CRESSP use **TensorFlow (>2.3.0)** for prediction of relative surface area (RSA) and secondary structure classification. If CUDA-enabled GPU is available, CRESSP will automatically use GPU for prediction of structural properties of input proteins.
 
 
 
 ## Usage
+
+#### command-line interface
 
 ```sh
 usage: cressp [-h] [-t DIR_FILE_PROTEIN_TARGET] [-q DIR_FILE_PROTEIN_QUERY] [-o DIR_FOLDER_OUTPUT] [-c CPU] [-w WINDOW_SIZE] [-s FLOAT_THRES_AVG_SCORE_BLOSUM_WEIGHTED] [-e FLOAT_THRES_E_VALUE] [-H]
@@ -73,11 +78,24 @@ arguments:
 
 
 
+#### usage as a python package 
+
+To estimate structural properties of protein sequences of interest, the following code can be used.
+
+```python
+import cressp
+import cressp.structural_property_estimation
+
+cressp.structural_property_estimation.Estimate_structural_property( "UP000464024_2697049.fasta", n_threads = 2, dir_folder_pipeline = "output/" )
+```
+
+
+
 
 
 ## Tutorial
 
-Download the proteome of SARS-CoV-2 from UniProt ([UP000464024](https://www.uniprot.org/proteomes/UP000464024)) as a fasta sequence
+Download the proteome of SARS-CoV-2 from UniProt ([UP000464024](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Viruses/UP000464024/UP000464024_2697049.fasta.gz)) as a fasta sequence
 
 
 

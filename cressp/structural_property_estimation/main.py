@@ -8,15 +8,12 @@ from tensorflow.keras import layers
 
 def Transfer_DSSP_Structural_Property_Through_BLAST( dir_file_input, dir_folder_cressp, dir_file_db, dir_file_protein, name_file, name_dataset, dir_folder_pipeline_struc ) : # 2020-07-29 01:09:01 
     """
-    # 2021-05-02 22:28:26 
+    # 2021-05-31 15:15:54 
+    transfer structural properties according to the BLAST alignment results
+    
     'dir_file_input' : the directory to the output of 'BLAST_Parse_BTOP_String' function
     
-    rely on the following global variables available on the top level: dict_saccver_to_arr_acc, dict_saccver_to_arr_phi, dict_saccver_to_arr_psi, dict_saccver_to_arr_ss8, dict_qaccver_to_seq, int_large_window_size = 25, int_middle_window_size = 9, int_small_window_size = 3, float_thres_weight = 10000
-    
-    'int_large_window_size', 'int_middle_window_size', 'int_small_window_size' : should be odd numbers.
-    'float_thres_weight' : should be adjusted according to the window sizes
-    'dict_saccver_to_arr_acc' and other three inputs : dictionary containing structural property of query sequences
-    'dict_qaccver_to_seq': a dictionary for identifying the length of subject sequences. """
+    """
     
     """ read BLOSUM62 score matrix """
     # read dict_blosum62 from the tsv file
@@ -154,17 +151,20 @@ def Combine_Result__Transfer_DSSP_Structural_Property_Through_BLAST( str_uuid, d
 
 
 
-def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only ) :
+def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeline = None, dir_folder_pipeline_temp = '/tmp/', flag_use_rcsb_pdb_only = False ) :
     """
-    # 2021-04-21 20:33:45 
-    Estimate structural properties of given proteins, and write a tsv file containing structural properties of the proteins
+    # 2021-05-31 15:13:13 
+    Estimate structural properties of given proteins, and write a tsv file containing structural properties of the proteins.
+    When CUDA-enabled GPU is available to TensorFlow, GPUs will be used to predict structural properties of protein residues not covered by known and/or predicted protein structures through homology-modeling.
     
     'dir_file_protein' : unzipped fasta file
     """
     # fixed arguments
     float_search_thres_e_value = 30 # set e-value threshold for search (fixed for maximum sensitivity)
 
-
+    # set 'dir_folder_pipeline' as the folder where the given protein fasta file is located
+    if dir_folder_pipeline is None :
+        dir_folder_pipeline = dir_file_protein.rsplit( '/', 1 )[ 0 ]
     name_file = dir_file_protein.rsplit( '/', 1 )[ 1 ].rsplit( '.', 1 )[ 0 ] # retrieve name of file excluding file extension
     dir_file_protein_property = f"{dir_folder_pipeline}{name_file}.tsv.gz" # define output file (a file containing protein sequences and their estimated structural properties)
     dir_folder_pipeline_struc = f'{dir_folder_pipeline}struc/' # create a working directory of estimating structural properties
