@@ -10,6 +10,8 @@ cressp.egg-info/dependency_links.txt
 cressp.egg-info/entry_points.txt
 cressp.egg-info/requires.txt
 cressp.egg-info/top_level.txt
+cressp/cross_reactivity_prediction/__init__.py
+cressp/cross_reactivity_prediction/main.py
 cressp/data/__init__.py
 cressp/data/blosum62.tsv.gz
 cressp/data/parse_data.py

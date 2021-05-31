@@ -314,7 +314,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_output
             for h in set( dict_arr_1 ).union( set( dict_arr_2 ) ) :
                 # retrieve length of sequence
                 len_seq = 0
-                for dict_arr in [ dict_arr_1, dict_arr_2 ] :
+                for dict_arr in [ dict_arr_2 ] if str_datatype == 'structure_id' else [ dict_arr_1, dict_arr_2 ] : # for 'structure_id', only use structure_id of the database of the higher priority ('RCSB_PDB' to be exact)
                     if h in dict_arr :
                         len_seq = len( dict_arr[ h ] )
                 arr_combined = np.full( len_seq, np.nan, dtype = object ) if str_datatype == 'structure_id' else np.full( len_seq, np.nan ) # initialize array containing combined data

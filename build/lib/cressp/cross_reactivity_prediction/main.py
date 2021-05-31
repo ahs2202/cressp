@@ -3,7 +3,7 @@ from biobookshelf import *
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
-def Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, float_thres_avg_score_blosum_weighted, float_thres_avg_score_blosum, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ) :
+def Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ) :
     """
     Calculate_Similarity_Scores_in_Aligned_Sequences
     using structural properties of both query and target proteins
@@ -228,11 +228,6 @@ def Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, float_thre
                     int_gap_count_subsequence_query, int_gap_count_subsequence_target = query_alignment_subsequence.count( '-' ), target_alignment_subsequence.count( '-' )
                     int_gap_count_before_subsequence_query, int_gap_count_before_subsequence_target = query_alignment[ : index_pos_start ].count( '-' ), target_alignment[ : index_pos_start ].count( '-' )
                     
-                    ''' perform filtering using given threshold values '''
-                    if float_score_blosum_for_window < float_thres_avg_score_blosum * int_window_size : continue # do not write subsequence whose average blosum score is below a given threshold
-                    if float_correl_coeffi_acc < float_thres_rsa_correlation : continue # do not write subsequence whose correlation coefficient of rsa values is below a given threshold
-                    if float_score_blosum_weighted_for_window < float_thres_avg_score_blosum_weighted * int_window_size : continue # filter records with low avg alignment score weighted with accessiblities
-                        
                     ''' write a record to the output file '''
                     l = [ int_window_size, id_alignment, source, query_accession, target_accession, e_value, identity, index_pos_start + 1, index_pos_start + int_window_size, query_start + index_pos_start - int_gap_count_before_subsequence_query, query_start + index_pos_start + int_window_size - 1 - int_gap_count_subsequence_query - int_gap_count_before_subsequence_query, target_start + index_pos_start - int_gap_count_before_subsequence_target, target_start + index_pos_start + int_window_size - 1 - int_gap_count_subsequence_target - int_gap_count_before_subsequence_target, query_alignment_subsequence, target_alignment_subsequence, float_score_blosum_for_window, float_score_blosum_weighted_for_window, float_sum_of_acc_weights, float_score_similarity_acc_for_window, float_score_similarity_phi_for_window, float_score_similarity_psi_for_window, float_score_similarity_ss8_for_window, n_valid_residues_score_similarity_acc_for_window, n_valid_residues_score_similarity_phi_for_window, n_valid_residues_score_similarity_psi_for_window, n_valid_residues_score_similarity_ss8_for_window, float_correl_coeffi_acc, float_correl_p_value_acc, float_correl_coeffi_phi, float_correl_p_value_phi, float_correl_coeffi_psi, float_correl_p_value_psi, float_prop_pdb_evidence_query, float_prop_pdb_evidence_target, structure_id_query, count_structure_id_query, structure_id_target, count_structure_id_target, str_ss8_query, count_id_ss8_most_frequent_query, str_ss8_target, count_id_ss8_most_frequent_target ]
                     file_output.write( ( '\t'.join( list( map( str, l ) ) ) + '\n' ).encode( ) ) # write a record to the output file

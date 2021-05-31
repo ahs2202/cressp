@@ -46,12 +46,15 @@ def main( ) :
     parser.add_argument( "-o", "--dir_folder_output", help = "(Default: a subdirectory of the current directory) an output directory", default = "default" )
     parser.add_argument( "-c", "--cpu", help = "(Default: 1) Number of logical CPUs (threads) to use in the current compute node.", default = '1' )
     parser.add_argument( "-w", "--window_size", help = "(Default: 30) list of window sizes separated by comma. Example: 15,30,45", default = "30" )
-    parser.add_argument( "-s", "--float_thres_avg_score_blosum_weighted", help = "(Default: 0.15) threshold for average weighted BLOSOM62 alignment score for filtering aligned sequences", default = '0.15' )
     parser.add_argument( "-e", "--float_thres_e_value", help = "(Default: 1e-20) threshold for the global alignment e-value in a scientific notation Example: 1e-3", default = "1e-20" )
     parser.add_argument( "-H", "--flag_use_HMM_search", help = "(Default: False) Set this flag to perform HMM search in addition to BLASTP search. HMM profile search is performed with HMMER3. The search usually takes several hours for metagenome-assembled genomes", action = 'store_true' )
     parser.add_argument( "-d", "--dir_file_query_hmmdb", help = "(Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file containing HMM DB of query proteins aligned against pan-proteomes", default = "human" )
-    parser.add_argument( "-S", "--flag_use_rcsb_pdb_only", help = "When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB", action = 'store_true' )
+    parser.add_argument( "-R", "--flag_use_rcsb_pdb_only", help = "When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB", action = 'store_true' )
     parser.add_argument( "-Q", "--flag_only_use_structural_properties_of_query_proteins", help = "Only use estimated structural properties of the query proteins when predicting cross-reactivity between target and query proteins (skip the estimation of structural properties of target proteins). When 'dir_file_protein_query' == 'human' (default value), it will significantly reduce computation time by skipping estimation and prediction steps of structural properties of target & query proteins.", action = 'store_true' )
+    # for filtering predicted cross-reactive epitopes
+    parser.add_argument( "-s", "--float_thres_avg_score_blosum_weighted", help = "(Default: 0.15) threshold for average weighted BLOSOM62 alignment score for filtering predicted cross-reactive epitopes", default = '0.15' )
+    parser.add_argument( "-S", "--float_thres_avg_score_blosum", help = "(Default: 0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive epitopes", default = '0.0' )
+    parser.add_argument( "-C", "--float_thres_rsa_correlation", help = "(Default: 0) threshold for correlation coefficient of Relative Surface Area (RSA) values for filtering predicted cross-reactive epitopes", default = '0.0' )
 
     args = parser.parse_args( )
     if args.dir_file_protein_target is None :
@@ -66,6 +69,9 @@ def main( ) :
     l_window_size = list( int( e ) for e in args.window_size.split( ',' ) ) # set default window size
     float_thres_e_value = float( args.float_thres_e_value )
     float_thres_avg_score_blosum_weighted = float( args.float_thres_avg_score_blosum_weighted ) 
+    float_thres_avg_score_blosum = float( args.float_thres_avg_score_blosum ) 
+    float_thres_rsa_correlation = float( args.float_thres_rsa_correlation ) 
+
 
     # parse directory arguments
     dir_file_protein_target = args.dir_file_protein_target
@@ -115,11 +121,13 @@ def main( ) :
         sys.exit( )
     else :
         os.makedirs( dir_folder_output, exist_ok = True )
-    # create a temporary output folder inside the output folder
+    # create output folders for each task
     dir_folder_pipeline = f"{dir_folder_output}pipeline/"
     os.makedirs( dir_folder_pipeline, exist_ok = True )
     dir_folder_pipeline_temp = f'{dir_folder_pipeline}temp/' 
     os.makedirs( dir_folder_pipeline_temp, exist_ok = True )
+    dir_folder_pipeline_struc = f'{dir_folder_pipeline}struc/' # create a working directory of estimating structural properties
+    os.makedirs( dir_folder_pipeline_struc, exist_ok = True )
 
 
     """
@@ -230,13 +238,10 @@ def main( ) :
     df = df[ df.e_value <= float_thres_e_value ] # drop entries with too low global similarity
     print( f"number of records after filtering: {len( df )}" )
 
-
     # predict cross-reactivity
-    l_uuid_process = Multiprocessing( df, Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
-
+    l_uuid_process = Multiprocessing( df, Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted, float_thres_avg_score_blosum, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
     # combine output files for each window size
     Multiprocessing( l_window_size, Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size
-
 
 
     #     # Bin similarity scores by acc_query and a given binning size for analysis
