@@ -159,12 +159,25 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
     
     'dir_file_protein' : unzipped fasta file
     """
+    
+    """
+    Parse arguments
+    """
+    # directories of file and folders
+    dir_file_protein = os.path.abspath( dir_file_protein )
+    dir_folder_pipeline = os.path.abspath( dir_folder_pipeline )
+    dir_folder_pipeline_temp = os.path.abspath( dir_folder_pipeline_temp )
+    if dir_folder_pipeline[ -1 ] != '/' : # last character of a directory should be '/'
+        dir_folder_pipeline += '/'
+    if dir_folder_pipeline_temp[ -1 ] != '/' : # last character of a directory should be '/'
+        dir_folder_pipeline_temp += '/'
+    
     # fixed arguments
     float_search_thres_e_value = 30 # set e-value threshold for search (fixed for maximum sensitivity)
 
-    # set 'dir_folder_pipeline' as the folder where the given protein fasta file is located
+    # By default, set 'dir_folder_pipeline' as the folder where the given protein fasta file is located
     if dir_folder_pipeline is None :
-        dir_folder_pipeline = dir_file_protein.rsplit( '/', 1 )[ 0 ]
+        dir_folder_pipeline = dir_file_protein.rsplit( '/', 1 )[ 0 ] + '/'
     name_file = dir_file_protein.rsplit( '/', 1 )[ 1 ].rsplit( '.', 1 )[ 0 ] # retrieve name of file excluding file extension
     dir_file_protein_property = f"{dir_folder_pipeline}{name_file}.tsv.gz" # define output file (a file containing protein sequences and their estimated structural properties)
     dir_folder_pipeline_struc = f'{dir_folder_pipeline}struc/' # create a working directory of estimating structural properties
@@ -267,7 +280,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
     """
     # 2021-05-29 17:25:14 
 
-    def Parse_Structural_Properties( df_sp, int_datatype ) :
+    def __Parse_Structural_Properties__( df_sp, int_datatype ) :
         """
         # 2021-05-03 16:18:16 
         parse structural properties with typical parameters for parsing ascii-encoded structural properties and typical column names  
@@ -296,7 +309,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
         dict_sp[ 'datatype_acc' ] = dict_datatype_acc
         return dict_sp
 
-    def Combine_Structural_Properties( dict_sp_1, dict_sp_2 ) :
+    def __Combine_Structural_Properties__( dict_sp_1, dict_sp_2 ) :
         """
         # 2021-05-29 16:12:09 
         Combine structural properties from the two different sources. 
@@ -329,13 +342,13 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
         return dict_sp_combined
 
     df_sp = pd.read_csv( f"{dir_folder_pipeline_struc}{name_file}_transferred_to_rcsb_pdb.tsv.gz", sep = '\t' )
-    dict_sp = Parse_Structural_Properties( df_sp, 2 ) # parse structural data from rcsb_pdb
+    dict_sp = __Parse_Structural_Properties__( df_sp, 2 ) # parse structural data from rcsb_pdb
 
     if not flag_use_rcsb_pdb_only :
         df_sp_swiss = pd.read_csv( f"{dir_folder_pipeline_struc}{name_file}_transferred_to_swiss_model.tsv.gz", sep = '\t' )
-        dict_sp_swiss = Parse_Structural_Properties( df_sp_swiss, 1 ) # parse structural data from swiss-model
+        dict_sp_swiss = __Parse_Structural_Properties__( df_sp_swiss, 1 ) # parse structural data from swiss-model
 
-        dict_sp = Combine_Structural_Properties( dict_sp_swiss, dict_sp ) # combine structural property data from RCSB_PDB and SWISS-MODEL
+        dict_sp = __Combine_Structural_Properties__( dict_sp_swiss, dict_sp ) # combine structural property data from RCSB_PDB and SWISS-MODEL
 
     ''' initialize arrays of proteins with no aligned structures '''
     for id_protein in dict_fasta_protein :
@@ -439,7 +452,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
     """
     Save Result
     """
-    def Encode_Structural_Properties( dict_sp, dict_fasta_protein ) :
+    def __Encode_Structural_Properties__( dict_sp, dict_fasta_protein ) :
         """
         # 2021-05-29 23:56:59 
         Compose a dataframe containing encoded structural properties using given 'dict_sp' and 'dict_fasta_protein'
@@ -466,7 +479,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
         df_sp.reset_index( drop = False, inplace = True )
         return df_sp
 
-    df_sp = Encode_Structural_Properties( dict_sp, dict_fasta_protein ) # encode structural properties into a dataframe
+    df_sp = __Encode_Structural_Properties__( dict_sp, dict_fasta_protein ) # encode structural properties into a dataframe
     df_sp.to_csv( f"{dir_folder_pipeline}{name_file}.tsv.gz", sep = '\t', index = False ) # save structural properties of input proteins as a tabular file
 
 
