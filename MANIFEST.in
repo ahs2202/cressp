@@ -5,7 +5,17 @@ exclude cressp/data/pdb/swiss_model.tsv.gz
 exclude cressp/data/pdb/swiss_model.tsv.gz.download_completed.flag
 exclude cressp/data/pdb/rcsb_pdb.tsv.gz
 exclude cressp/data/pdb/rcsb_pdb.tsv.gz.download_completed.flag
+exclude cressp/data/pdb/rcsb_pdb.label_seq_id.start_end.tsv.gz
+exclude cressp/data/pdb/rcsb_pdb.label_seq_id.start_end.tsv.gz.download_completed.flag
+exclude cressp/data/pdb/rcsb_pdb.id_model_and_label_entity_id.tsv.gz
+exclude cressp/data/pdb/rcsb_pdb.id_model_and_label_entity_id.tsv.gz.download_completed.flag
 exclude cressp/data/human/uniprot.tsv.gz
 exclude cressp/data/human/uniprot.tsv.gz.download_completed.flag
+exclude cressp/data/human/uniprot.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz
+exclude cressp/data/human/uniprot.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz.download_completed.flag
 exclude cressp/data/human/hmmdb_autoantigen.hmm.gz
 exclude cressp/data/human/hmmdb_autoantigen.hmm.gz.download_completed.flag
+exclude cressp/data/mhc_population_allele_frequency.tsv.gz
+exclude cressp/data/mhc_population_allele_frequency.tsv.gz.download_completed.flag
+
+

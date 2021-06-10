@@ -8,7 +8,9 @@ pd.options.mode.chained_assignment = None  # default='warn' # to disable worinin
 
 from cressp.structural_property_estimation import Estimate_structural_property
 
-from cressp.cross_reactivity_prediction import Calculate_Similarity_Scores_in_Aligned_Sequences, Combine_result_files_for_each_window_size
+from cressp.cross_reactivity_prediction import Predict_T_cell_cross_reactivity, Predict_B_cell_cross_reactivity
+
+from cressp.web_application import Prepare_data_for_web_application
 
 import argparse
 import traceback
@@ -23,7 +25,7 @@ import math
 #     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
 #         dict_blosum62[ aa_0, aa_1 ] = score
 
-def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 1e-20, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted = 0.15, float_thres_avg_score_blosum = 0.0, float_thres_rsa_correlation = 0.0 ) :
+def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 1e-20, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5 ) :
     """
     The main function of Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
     
@@ -45,15 +47,21 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
             
     dir_file_query_hmmdb = 'human' : (Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file containing HMM DB of query proteins aligned against pan-proteomes.
             
-    flag_use_rcsb_pdb_only = False :  (Default: False) When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB.
+    flag_use_rcsb_pdb_only = False : (Default: False) When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB.
+    
+    int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000 : (Default: 1000) number of proteins in a batch when predicting structural properties of protein residues not covered by known/predict structures.
             
     flag_only_use_structural_properties_of_query_proteins = False : (Default: False) Only use estimated structural properties of the query proteins when predicting cross-reactivity between target and query proteins (skip the estimation of structural properties of target proteins). When 'dir_file_protein_query' == 'human' (default value), it will significantly reduce computation time by skipping estimation and prediction steps of structural properties of target and query proteins.
             
-    float_thres_avg_score_blosum_weighted = 0.15 : (Default: 0.15) threshold for average weighted BLOSOM62 alignment score for filtering predicted cross-reactive epitopes.
+    float_thres_avg_score_blosum_weighted__b_cell = 0.15 : (Default: 0.15) threshold for average weighted BLOSOM62 alignment score for filtering predicted cross-reactive epitopes.
             
-    float_thres_avg_score_blosum = 0.0 : (Default: 0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive epitopes.
+    float_thres_avg_score_blosum__b_cell = 0.0 : (Default: 0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive epitopes.
             
     float_thres_rsa_correlation = 0 : (Default: 0) threshold for correlation coefficient of Relative Surface Area (RSA) values for filtering predicted cross-reactive epitopes.
+    
+    float_thres_avg_blosum62_score_for_mhc = 2.0 : (Default: 2.0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive T-cell epitopes (cross-reactive MHC epitopes)
+    
+    float_thres_min_mhc_allele_frequency = 0.5 : (Default: 0.5) a threshold for filtering out MHC alleles with low allele frequencies. MHC alleles with allele frequency above the threshold for at least one population will be used for cross-reactive T-cell epitope prediction
             
     """
     
@@ -91,11 +99,14 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         parser.add_argument( "-H", "--flag_use_HMM_search", help = "(Default: False) Set this flag to perform HMM search in addition to BLASTP search. HMM profile search is performed with HMMER3. The search usually takes several hours for metagenome-assembled genomes", action = 'store_true' )
         parser.add_argument( "-d", "--dir_file_query_hmmdb", help = "(Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file containing HMM DB of query proteins aligned against pan-proteomes", default = "human" )
         parser.add_argument( "-R", "--flag_use_rcsb_pdb_only", help = "(Default: False) When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB", action = 'store_true' )
+        parser.add_argument( "-B", "--int_number_of_proteins_in_a_batch_during_dnn_prediction", help = "(Default: 1000) number of proteins in a batch when predicting structural properties of protein residues not covered by known/predict structures.", default = '1000' )
         parser.add_argument( "-Q", "--flag_only_use_structural_properties_of_query_proteins", help = "(Default: False) Only use estimated structural properties of the query proteins when predicting cross-reactivity between target and query proteins (skip the estimation of structural properties of target proteins). When 'dir_file_protein_query' == 'human' (default value), it will significantly reduce computation time by skipping estimation and prediction steps of structural properties of target and query proteins.", action = 'store_true' )
         # for filtering predicted cross-reactive epitopes
-        parser.add_argument( "-s", "--float_thres_avg_score_blosum_weighted", help = "(Default: 0.15) threshold for average weighted BLOSOM62 alignment score for filtering predicted cross-reactive epitopes", default = '0.15' )
-        parser.add_argument( "-S", "--float_thres_avg_score_blosum", help = "(Default: 0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive epitopes", default = '0.0' )
-        parser.add_argument( "-C", "--float_thres_rsa_correlation", help = "(Default: 0) threshold for correlation coefficient of Relative Surface Area (RSA) values for filtering predicted cross-reactive epitopes", default = '0.0' )
+        parser.add_argument( "-s", "--float_thres_avg_score_blosum_weighted__b_cell", help = "(Default: 0.15) threshold for average rsa-weighted BLOSOM62 alignment score for filtering predicted cross-reactive b-cell epitopes", default = '0.15' )
+        parser.add_argument( "-S", "--float_thres_avg_score_blosum__b_cell", help = "(Default: 0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive b-cell epitopes", default = '0.0' )
+        parser.add_argument( "-C", "--float_thres_rsa_correlation", help = "(Default: 0) threshold for correlation coefficient of Relative Surface Area (RSA) values for filtering predicted cross-reactive b-cell epitopes", default = '0.0' )
+        parser.add_argument( "-b", "--float_thres_avg_blosum62_score_for_mhc", help = "(Default: 2.0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive T-cell epitopes (cross-reactive MHC epitopes)", default = '2.0' )
+        parser.add_argument( "-m", "--float_thres_min_mhc_allele_frequency", help = "(Default: 0.5) a threshold for filtering out MHC alleles with low allele frequencies. MHC alleles with allele frequency above the threshold for at least one population will be used for cross-reactive T-cell epitope prediction", default = '0.5' )
 
         args = parser.parse_args( )
         if args.dir_file_protein_target is None :
@@ -106,11 +117,14 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         flag_use_HMM_search = args.flag_use_HMM_search
         flag_use_rcsb_pdb_only = args.flag_use_rcsb_pdb_only
         flag_only_use_structural_properties_of_query_proteins = args.flag_only_use_structural_properties_of_query_proteins
+        int_number_of_proteins_in_a_batch_during_dnn_prediction = int( args.int_number_of_proteins_in_a_batch_during_dnn_prediction )
         n_threads = min( int( args.cpu ), int( multiprocessing.cpu_count( ) ) ) # max number of n_threads is the CPU number of the current local machine
+        float_thres_avg_blosum62_score_for_mhc = float( args.float_thres_avg_blosum62_score_for_mhc )
+        float_thres_min_mhc_allele_frequency = float( args.float_thres_min_mhc_allele_frequency )
         l_window_size = list( int( e ) for e in args.window_size.split( ',' ) ) # set default window size
         float_thres_e_value = float( args.float_thres_e_value )
-        float_thres_avg_score_blosum_weighted = float( args.float_thres_avg_score_blosum_weighted ) 
-        float_thres_avg_score_blosum = float( args.float_thres_avg_score_blosum ) 
+        float_thres_avg_score_blosum_weighted__b_cell = float( args.float_thres_avg_score_blosum_weighted__b_cell ) 
+        float_thres_avg_score_blosum__b_cell = float( args.float_thres_avg_score_blosum__b_cell ) 
         float_thres_rsa_correlation = float( args.float_thres_rsa_correlation ) 
 
         # parse directory arguments
@@ -176,6 +190,12 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     os.makedirs( dir_folder_pipeline_temp, exist_ok = True )
     dir_folder_pipeline_struc = f'{dir_folder_pipeline}struc/' # create a working directory of estimating structural properties
     os.makedirs( dir_folder_pipeline_struc, exist_ok = True )
+    
+    # define folder directories for exporting data for web applications
+    dir_folder_pipeline_web = f'{dir_folder_pipeline}web_application/' # a working directory for exporting data for web applications
+    os.makedirs( dir_folder_pipeline_web, exist_ok = True )
+    dir_folder_web = f'{dir_folder_output}web_application/'
+    os.makedirs( dir_folder_web, exist_ok = True )
 
 
     """
@@ -271,33 +291,42 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     # use previously calculated structural properties when the default query proteins were used
     if flag_default_protein_query_was_used :
         shutil.copyfile( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', f'{dir_folder_pipeline}protein_query.tsv.gz' ) 
+        # use previously calculated alignment between human proteins and RCSB_PDB structures
+        PKG.Download_Data( "data/human/uniprot.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz", dir_remote, name_package ) # download data (alignment between human proteins and RCSB_PDB structures)
+        shutil.copyfile( f'{dir_folder_cressp}data/human/uniprot.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz', f'{dir_folder_pipeline}struc/protein_query.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz' ) 
+    
     # estimate structural properties
-    for name_file in [ 'protein_target', 'protein_query' ] :
-        if not os.path.exists( f'{dir_folder_pipeline}{name_file}.tsv.gz' ) :
-            Estimate_structural_property( f'{dir_folder_pipeline}{name_file}.fasta', n_threads, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only )
+    for name_file in [ 'protein_target' ] if flag_default_protein_query_was_used else [ 'protein_target', 'protein_query' ] : # skip prediction of query proteins if default query proteins are used
+        """ check flag """
+        dir_file_flag = f"{dir_folder_pipeline}{name_file}.tsv.gz.completed.flag"
+        if not os.path.exists( dir_file_flag ) :
+            Estimate_structural_property( f'{dir_folder_pipeline}{name_file}.fasta', n_threads, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only, int_number_of_proteins_in_a_batch_during_dnn_prediction )
+
+            """ set flag """
+            with open( dir_file_flag, 'w' ) as newfile :
+                newfile.write( 'completed\n' )
 
 
     """
-    Calculate similarity scores based on structural properties of proteins 
+    Calculate B-cell epitope similarity scores based on structural properties of proteins 
     """
-    df = pd.read_csv( dir_file_matched, sep = '\t' ) # read alignments between query and target protein sequences
-    df.index.name = 'id_alignment' # retrieve id_alignment (index of df_matched) during retrieving subsequences
-    df.reset_index( drop = False, inplace = True ) # add id_alignment column to to the dataframe
-    print( f"number of records: {len( df )}" )
-    df = df[ df.e_value <= float_thres_e_value ] # drop entries with too low global similarity
-    print( f"number of records after filtering: {len( df )}" )
-
-    # predict cross-reactivity
-    l_uuid_process = Multiprocessing( df, Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted, float_thres_avg_score_blosum, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
-    # combine output files for each window size
-    Multiprocessing( l_window_size, Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size
-
-
-    #     # Bin similarity scores by acc_query and a given binning size for analysis
-    #     size_window_binning = 100
-    #     size_overlap_binning = 50
-
-    #     Multiprocessing( l_window_size, Bin_Similarity_Scores, n_threads = min( len( l_window_size ), int( OS_Memory( )[ 'MemAvailable' ] / 1e7 ) ), dir_temp = dir_folder_pipeline_temp ) # combine result files for each window_size
+    Predict_B_cell_cross_reactivity( dir_folder_pipeline, dir_folder_pipeline_temp, n_threads, l_window_size, float_thres_e_value, flag_only_use_structural_properties_of_query_proteins, float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation )
+    
+    """ 
+    Calculate T-cell epitope similarity scores based on BLOSUM62 scores and predicted binding affinity scores.
+    """
+    
+    Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency )
+    
+    """
+    Further process data for visualization using a web application
+    """
+    # combine results of all 'window_size' values
+    df = pd.concat( list( pd.read_csv( dir_file, sep = '\t', low_memory = False ) for dir_file in glob.glob( f"{dir_folder_pipeline}b_cell.subsequence__window_size_*.tsv.gz" ) ), ignore_index = True )
+    df.to_csv( f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", sep = '\t', index = False )
+    del df
+    # prepare data for web application using the combined subsequence
+    Prepare_data_for_web_application( f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", dir_folder_pipeline, dir_folder_pipeline_temp, n_threads )
 
 
 

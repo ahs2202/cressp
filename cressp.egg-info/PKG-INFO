@@ -1,19 +1,22 @@
 Metadata-Version: 2.1
 Name: cressp
-Version: 0.0.11
+Version: 0.0.12
 Summary: a program to find cross-reactive epitopes with structural information from known protein structures.
 Home-page: https://github.com/ahs2202/cressp
 Author: Hyunsu An
 Author-email: ahs2202@gm.gist.ac.kr
 License: GPLv3
-Description: # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
+Description: ![CRESSP Logo](https://raw.githubusercontent.com/ahs2202/cressp/master/documentation/cressp_logo.PNG)
+        
+        # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
+        
          A program to find cross-reactive epitopes with structural information from known protein structures.
         
         
         
         ## Introduction
         
-        Our novel pipeline, called Cross-ReactiveEpitope-Search-using-Structural-Properties-of-proteins (CRESSP), use structural information from RCSB-PDB database to search potential cross-reactive B-cell epitopes of human and pathogen proteins. 
+        Our new pipeline, called Cross-ReactiveEpitope-Search-using-Structural-Properties-of-proteins (CRESSP), use structural information from RCSB-PDB database to search potential cross-reactive B-cell epitopes of human and pathogen proteins. 
         
         First, protein sequences of interest (provided by user) are searched with either BLASTP alone or in combination with HMMER3 with an HMM profile database built from ~5000 Pan-Proteomes from the UniProt database.
         
@@ -27,7 +30,7 @@ Description: # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-prot
         
         ## Installation 
         
-        CRESSP requires BLASTP from BLAST+ (v2.10.1+) and HMMER3, which can be installed through conda with the following commands:
+        CRESSP requires BLASTP from **BLAST+ (v2.10.1+)** and HMMER3, which can be installed through conda with the following commands:
         
         ```sh
             conda install -c bioconda blast
@@ -42,30 +45,31 @@ Description: # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-prot
             pip install cressp
         ```
         
-        CRESSP use TensorFlow (>2.3.0) for prediction of relative surface area (RSA) and secondary structure classification. If CUDA-enabled GPU is available, CRESSP will automatically use GPU for prediction of structural properties of input proteins.
+        CRESSP use **TensorFlow (>2.3.0)** for prediction of relative surface area (RSA) and secondary structure classification. If CUDA-enabled GPU is available, CRESSP will automatically use GPU for prediction of structural properties of input proteins.
         
         
         
         ## Usage
         
-        ```sh
-        usage: cressp [-h] [-t DIR_FILE_PROTEIN_TARGET] [-q DIR_FILE_PROTEIN_QUERY] [-o DIR_FOLDER_OUTPUT] [-c CPU] [-w WINDOW_SIZE] [-s FLOAT_THRES_AVG_SCORE_BLOSUM_WEIGHTED] [-e FLOAT_THRES_E_VALUE] [-H]
-                      [-d DIR_FILE_QUERY_HMMDB] [-Q]
+        #### command-line interface
         
+        ```
+        usage: cressp [-h] [-t DIR_FILE_PROTEIN_TARGET] [-q DIR_FILE_PROTEIN_QUERY] [-o DIR_FOLDER_OUTPUT] [-c CPU] [-w WINDOW_SIZE] [-e FLOAT_THRES_E_VALUE] [-H] [-d DIR_FILE_QUERY_HMMDB] [-R] [-Q]
+                      [-s FLOAT_THRES_AVG_SCORE_BLOSUM_WEIGHTED] [-S FLOAT_THRES_AVG_SCORE_BLOSUM] [-C FLOAT_THRES_RSA_CORRELATION]
         
-        arguments:
+        Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (cressp): a program to find cross-reactive epitopes with structural information from known protein structures.
+        
+        optional arguments:
           -h, --help            show this help message and exit
           -t DIR_FILE_PROTEIN_TARGET, --dir_file_protein_target DIR_FILE_PROTEIN_TARGET
                                 (Required) an input FASTA file containing target protein sequences.
           -q DIR_FILE_PROTEIN_QUERY, --dir_file_protein_query DIR_FILE_PROTEIN_QUERY
                                 (Default: UniProt human proteins) an input FASTA file containing query protein sequences.
           -o DIR_FOLDER_OUTPUT, --dir_folder_output DIR_FOLDER_OUTPUT
-                                (Default: a subdirectory of the current directory) an output directory
+                                (Default: a subdirectory 'cressp_out/' of the current directory) an output directory
           -c CPU, --cpu CPU     (Default: 1) Number of logical CPUs (threads) to use in the current compute node.
           -w WINDOW_SIZE, --window_size WINDOW_SIZE
                                 (Default: 30) list of window sizes separated by comma. Example: 15,30,45
-          -s FLOAT_THRES_AVG_SCORE_BLOSUM_WEIGHTED, --float_thres_avg_score_blosum_weighted FLOAT_THRES_AVG_SCORE_BLOSUM_WEIGHTED
-                                (Default: 0.15) threshold for average weighted BLOSOM62 alignment score for filtering aligned sequences
           -e FLOAT_THRES_E_VALUE, --float_thres_e_value FLOAT_THRES_E_VALUE
                                 (Default: 1e-20) threshold for the global alignment e-value in a scientific notation Example: 1e-3
           -H, --flag_use_HMM_search
@@ -74,9 +78,47 @@ Description: # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-prot
           -d DIR_FILE_QUERY_HMMDB, --dir_file_query_hmmdb DIR_FILE_QUERY_HMMDB
                                 (Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file
                                 containing HMM DB of query proteins aligned against pan-proteomes
-          -Q, --flag_skip_struc_prop_for_protein_target
-                                (Default: False) Set this flag to skip the estimation of structural properties of target proteins. Only structural properties of query proteins will be used to calculate
-                                accessibility-weighted-similarity scores
+          -R, --flag_use_rcsb_pdb_only
+                                (Default: False) When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use
+                                experimental protein structures from RCSB PDB
+          -Q, --flag_only_use_structural_properties_of_query_proteins
+                                (Default: False) Only use estimated structural properties of the query proteins when predicting cross-reactivity between target and query proteins (skip the estimation of
+                                structural properties of target proteins). When 'dir_file_protein_query' == 'human' (default value), it will significantly reduce computation time by skipping estimation and
+                                prediction steps of structural properties of target and query proteins.
+          -s FLOAT_THRES_AVG_SCORE_BLOSUM_WEIGHTED, --float_thres_avg_score_blosum_weighted FLOAT_THRES_AVG_SCORE_BLOSUM_WEIGHTED
+                                (Default: 0.15) threshold for average weighted BLOSOM62 alignment score for filtering predicted cross-reactive epitopes
+          -S FLOAT_THRES_AVG_SCORE_BLOSUM, --float_thres_avg_score_blosum FLOAT_THRES_AVG_SCORE_BLOSUM
+                                (Default: 0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive epitopes
+          -C FLOAT_THRES_RSA_CORRELATION, --float_thres_rsa_correlation FLOAT_THRES_RSA_CORRELATION
+                                (Default: 0) threshold for correlation coefficient of Relative Surface Area (RSA) values for filtering predicted cross-reactive epitopes
+        ```
+        
+        
+        
+        #### usage as a python package 
+        
+        To run CRESSP from an interactive Python environment, the following code can be used.
+        
+        ```python
+        import cressp
+        
+        # Run CRESSP from an interactive python interpreter (e.g. Jupyter Notebook)
+        cressp.cressp( dir_file_protein_target = "UP000464024_2697049.fasta", n_threads = 2, flag_use_HMM_search = True, l_window_size = [ 15, 30 ], float_thres_e_value = 1e-2 )
+        ```
+        
+        
+        
+        Alternatively, to run only a part of CRESSP to estimate structural properties of protein sequences of interest, the following code can be used.
+        
+        ```python
+        import cressp
+        import cressp.structural_property_estimation
+        
+        # estimate structural properties
+        cressp.structural_property_estimation.Estimate_structural_property( "UP000464024_2697049.fasta", n_threads = 2, dir_folder_pipeline = "output/" )
+        
+        # read estimated structural properties from an output file
+        dict_sp = cressp.Parse_Structural_Properties( "output/UP000464024_2697049.tsv.gz" )
         ```
         
         
@@ -85,16 +127,18 @@ Description: # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-prot
         
         ## Tutorial
         
-        Download the proteome of SARS-CoV-2 from UniProt ([UP000464024](https://www.uniprot.org/proteomes/UP000464024)) as a fasta sequence
+        Download the proteome of SARS-CoV-2 from UniProt ([UP000464024](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Viruses/UP000464024/UP000464024_2697049.fasta.gz)) as a FASTA sequence
         
         
         
-        run the following command to 
+        run CRESSP with the following command will do the following tasks:
         
         1. Search SARS-CoV-2 protein sequences with human protein sequences with BLASTP and HMMER3, and
-        2. Calculate similarity scores based on relative-surface-availability of residues of human proteins
+        2. Align SARS-CoV-2 protein sequences against known or predicted protein structures from the [RCSB-PDB](https://www.rcsb.org/) database and the [SWISS-MODEL Repository](https://swissmodel.expasy.org/repository).
+        3. Predict structural properties (surface accessibility and secondary structure) of protein residues not covered by the protein structure databases using Deep Neural Network (DNN) models trained on the protein structure databases.
+        4. Calculate similarity scores based on estimated structural properties of SARS-CoV-2 proteins and (pre-computed) structural properties of human proteins
         
-        ```sh
+        ```bash
             cressp -t UP000464024_2697049.fasta.gz --flag_use_HMM_search --float_thres_e_value 5e-2 --cpu 2
         ```
         

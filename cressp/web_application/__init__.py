@@ -1,1 +1,1 @@
-from .main import *
+from .prepare_data import *
