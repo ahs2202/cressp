@@ -37,7 +37,15 @@ CRESSP can be installed from PyPI (https://pypi.org/project/cressp/)
     pip install cressp
 ```
 
-CRESSP use **TensorFlow (>2.3.0)** for prediction of relative surface area (RSA) and secondary structure classification. If CUDA-enabled GPU is available, CRESSP will automatically use GPU for prediction of structural properties of input proteins.
+CRESSP uses **TensorFlow (>2.3.0)** for prediction of relative surface area (RSA) and secondary structure classification. If CUDA-enabled GPU is available, CRESSP will automatically use GPU for prediction of structural properties of input proteins.
+
+
+
+For T-cell cross-reactive epitope prediction, CRESSP uses **MHCflurry 2** to predict MHC binding affinity values of aligned peptides. Before using CRESSP, MHCflurry 2 models and datasets should be downloaded by executing following command:
+
+```shell
+mhcflurry-downloads fetch
+```
 
 
 
