@@ -41,7 +41,7 @@ CRESSP uses **TensorFlow (>2.3.0)** for prediction of relative surface area (RSA
 
 
 
-For T-cell cross-reactive epitope prediction, CRESSP uses **MHCflurry 2** to predict MHC binding affinity values of aligned peptides. Before using CRESSP, MHCflurry 2 models and datasets should be downloaded by executing following command:
+For T-cell cross-reactive epitope prediction, CRESSP uses **MHCflurry 2** to predict MHC binding affinity values of aligned peptides. Before using CRESSP, MHCflurry 2 models and datasets should be downloaded by executing the following command:
 
 ```shell
 mhcflurry-downloads fetch

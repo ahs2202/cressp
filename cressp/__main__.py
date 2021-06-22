@@ -25,7 +25,7 @@ import math
 #     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
 #         dict_blosum62[ aa_0, aa_1 ] = score
 
-def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 1e-20, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5 ) :
+def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 1e-20, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5, float_thres_binding_affinities_in_nM = 500 ) :
     """
     The main function of Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
     
@@ -62,6 +62,8 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     float_thres_avg_blosum62_score_for_mhc = 2.0 : (Default: 2.0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive T-cell epitopes (cross-reactive MHC epitopes)
     
     float_thres_min_mhc_allele_frequency = 0.5 : (Default: 0.5) a threshold for filtering out MHC alleles with low allele frequencies. MHC alleles with allele frequency above the threshold for at least one population will be used for cross-reactive T-cell epitope prediction
+            
+    float_thres_binding_affinities_in_nM = 500 : (Default: 500) a threshold predicted IC50 values for filtering predicted T-cell cross-reactive epitopes. A pair of peptides whose geometric average of predicted binding affinities (IC50) values above this threshold will be removed.
             
     """
     
@@ -107,6 +109,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         parser.add_argument( "-C", "--float_thres_rsa_correlation", help = "(Default: 0) threshold for correlation coefficient of Relative Surface Area (RSA) values for filtering predicted cross-reactive b-cell epitopes", default = '0.0' )
         parser.add_argument( "-b", "--float_thres_avg_blosum62_score_for_mhc", help = "(Default: 2.0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive T-cell epitopes (cross-reactive MHC epitopes)", default = '2.0' )
         parser.add_argument( "-m", "--float_thres_min_mhc_allele_frequency", help = "(Default: 0.5) a threshold for filtering out MHC alleles with low allele frequencies. MHC alleles with allele frequency above the threshold for at least one population will be used for cross-reactive T-cell epitope prediction", default = '0.5' )
+        parser.add_argument( "-a", "--float_thres_binding_affinities_in_nM", help = "(Default: 500) a threshold predicted IC50 values for filtering predicted T-cell cross-reactive epitopes. A pair of peptides whose geometric average of predicted binding affinities (IC50) values above this threshold will be removed.", default = '500' )
 
         args = parser.parse_args( )
         if args.dir_file_protein_target is None :
@@ -126,6 +129,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         float_thres_avg_score_blosum_weighted__b_cell = float( args.float_thres_avg_score_blosum_weighted__b_cell ) 
         float_thres_avg_score_blosum__b_cell = float( args.float_thres_avg_score_blosum__b_cell ) 
         float_thres_rsa_correlation = float( args.float_thres_rsa_correlation ) 
+        float_thres_binding_affinities_in_nM = float( args.float_thres_binding_affinities_in_nM )
 
         # parse directory arguments
         dir_file_protein_target = args.dir_file_protein_target
@@ -144,10 +148,10 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     if dir_file_protein_query == 'human' :
         flag_default_protein_query_was_used = True
         PKG.Download_Data( "data/human/uniprot.tsv.gz", dir_remote, name_package ) # download data
-        dir_file_protein_query = f'{dir_folder_cressp}data/human/uniprot.fa' # set default 'dir_file_protein_query'
+        dir_file_protein_query = f'{dir_folder_cressp}data/human/human_uniprot.fa' # set default 'dir_file_protein_query' # file_name will be used to refer to the given query protein, and thus 'human_uniprot' is used as a file_name.
         if not os.path.exists( dir_file_protein_query ) : # if default human protein fasta file is not available, extract the sequence from the dataframe
             df_protein_query = pd.read_csv( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', sep = '\t' )
-            dict_fasta_protein_query = df_protein_query.set_index( 'id_protein' ).seq.to_dict( )
+            dict_fasta_protein_query = df_protein_query.set_index( 'fasta_header' ).seq.to_dict( )
             FASTA_Write( dir_file_protein_query, dict_fasta = dict_fasta_protein_query )
 
         if flag_use_HMM_search : 
@@ -201,7 +205,20 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     """
     Read and move input protein Fasta files
     """
+    def __Get_File_Name_Without_Extension__( dir_file ) :
+        ''' get file_name of a given directory to a fasta file (gzipped or uncompressed) and return it '''
+        name_file_without_extension = dir_file.rsplit( '/', 1 )[ 1 ]
+        # when a file does not have extension
+        if '.' not in name_file_without_extension :
+            return name_file_without_extension
+        name_file_without_extension, str_file_extension = name_file_without_extension.rsplit( '.', 1 )
+        # when a file is gzipped, perform extension spliting one more time
+        if str_file_extension.lower( ) == 'gz' :
+            name_file_without_extension, str_file_extension = name_file_without_extension.rsplit( '.', 1 )
+        return name_file_without_extension
+    
     try :
+        name_file_protein_query = __Get_File_Name_Without_Extension__( dir_file_protein_query ) # retrieve file name containing the query proteins
         dict_fasta_protein_query = FASTA_Read( dir_file_protein_query )
         FASTA_Write( f"{dir_folder_pipeline}protein_query.fasta", dict_fasta = dict_fasta_protein_query )
         dir_file_protein_query = f"{dir_folder_pipeline}protein_query.fasta" # set directory of fasta file to the new file location
@@ -211,6 +228,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         else : return - 1
 
     try :
+        name_file_protein_target = __Get_File_Name_Without_Extension__( dir_file_protein_target ) # retrieve file name containing the query proteins
         dict_fasta_protein_target = FASTA_Read( dir_file_protein_target )
         FASTA_Write( f"{dir_folder_pipeline}protein_target.fasta", dict_fasta = dict_fasta_protein_target )
         dir_file_protein_target = f"{dir_folder_pipeline}protein_target.fasta" # set directory of fasta file to the new file location
@@ -218,6 +236,40 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         print( f"exiting due to an error while reading and moving 'dir_file_protein_target' {dir_file_protein_target}" )
         if flag_usage_from_command_line_interface : sys.exit( )
         else : return - 1
+        
+    """
+    Report external and internal program settings
+    """
+    # compile setting (metadata)
+    dict_cressp_setting = {  
+            # program setting
+        'n_threads' : n_threads,
+        'flag_use_HMM_search' : flag_use_HMM_search,
+        'flag_use_rcsb_pdb_only' : flag_use_rcsb_pdb_only,
+        'flag_only_use_structural_properties_of_query_proteins' : flag_only_use_structural_properties_of_query_proteins,
+        'float_thres_avg_blosum62_score_for_mhc' : float_thres_avg_blosum62_score_for_mhc,
+        'float_thres_min_mhc_allele_frequency' : float_thres_min_mhc_allele_frequency,
+        'l_window_size' : l_window_size,
+        'float_thres_e_value' : float_thres_e_value,
+        'float_thres_avg_score_blosum_weighted__b_cell' : float_thres_avg_score_blosum_weighted__b_cell,
+        'float_thres_avg_score_blosum__b_cell' : float_thres_avg_score_blosum__b_cell,
+        'float_thres_rsa_correlation' : float_thres_rsa_correlation,
+        'float_thres_binding_affinities_in_nM' : float_thres_binding_affinities_in_nM,
+        'dir_file_protein_target' : dir_file_protein_target,
+        'dir_file_protein_query' : dir_file_protein_query,
+        'dir_folder_output' : dir_folder_output,
+        'dir_file_query_hmmdb' : dir_file_query_hmmdb,
+            # internal setting
+        'dir_folder_pipeline' : dir_folder_pipeline,
+        'dir_folder_pipeline_temp' : dir_folder_pipeline_temp,
+        'dir_folder_pipeline_struc' : dir_folder_pipeline_struc,
+        'dir_folder_pipeline_web' : dir_folder_pipeline_web,
+        'dir_folder_web' : dir_folder_web,
+
+        'name_file_protein_query' : name_file_protein_query,
+        'name_file_protein_target' : name_file_protein_target }
+    print( "cressp will be run with the following setting:" )
+    print( dict_cressp_setting )
 
     """
     Perform BLASTP alignment
@@ -260,7 +312,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     # load hmmer result according to 'flag_use_HMM_search' flag
     if flag_use_HMM_search : 
         df = HMMER_HMMSEARCH_Read_output( dir_file_hmmsearch_output )
-        dict_qacc_to_seq = dict_fasta_protein_query
+        dict_qacc_to_seq = dict( ( header.split( ' ', 1 )[ 0 ], dict_fasta_protein_query[ header ] ) for header in list( dict_fasta_protein_query ) )
         l_query_alignment = list( ) # replace query consensus sequence with query sequence
         for query_accession, query_alignment, query_start, query_end in df[ [ 'query_accession', 'query_alignment', 'query_start', 'query_end' ] ].values :
             query_seq = dict_qacc_to_seq[ query_accession ][ query_start - 1 : query_end ] # retrive a subsequence of query sequence
@@ -316,18 +368,20 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     Calculate T-cell epitope similarity scores based on BLOSUM62 scores and predicted binding affinity scores.
     """
     
-    Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency )
+    Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM )
+
     
     """
-    Further process data for visualization using a web application
+    Further process and export data for visualization using a web application
     """
     # combine results of all 'window_size' values
     df = pd.concat( list( pd.read_csv( dir_file, sep = '\t', low_memory = False ) for dir_file in glob.glob( f"{dir_folder_pipeline}b_cell.subsequence__window_size_*.tsv.gz" ) ), ignore_index = True )
     df.to_csv( f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", sep = '\t', index = False )
     del df
     # prepare data for web application using the combined subsequence
-    Prepare_data_for_web_application( f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", dir_folder_pipeline, dir_folder_pipeline_temp, n_threads )
-
+    # copy data for web application and encode using base64 encoding, and write metadata
+    Prepare_data_for_web_application( f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", f"{dir_folder_pipeline}t_cell.mhc_binding.tsv.gz", dict_cressp_setting )
+    
 
 
 def Parse_Structural_Properties( dir_file_df_sp, name_col_for_identifying_protein = 'id_protein' ) :

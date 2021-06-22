@@ -268,6 +268,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
     # transfer surface accessibility data from structures to proteins
     """ read input proteins """
     dict_fasta_protein = FASTA_Read( dir_file_protein )
+    dict_header = dict( ( h.split( ' ', 1 )[ 0 ], h ) for h in dict_fasta_protein ) # retrieve a dictionary of header (key = id_protein, value = header)
     dict_fasta_protein = dict( ( h.split( ' ', 1 )[ 0 ], dict_fasta_protein[ h ] ) for h in dict_fasta_protein ) # retrieve sequence_id by spliting the header at the first space (to makes sequence_id consistent with that used with blastp)
 
     for dir_file_db, name_dataset in zip( [ dir_file_db_rcsb_pdb ] if flag_use_rcsb_pdb_only else [ dir_file_db_rcsb_pdb, dir_file_db_swiss_model ], [ 'rcsb_pdb' ] if flag_use_rcsb_pdb_only else [ 'rcsb_pdb', 'swiss_model' ] ) :
@@ -520,6 +521,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
             return df_sp
 
         df_sp = __Encode_Structural_Properties__( dict_sp, dict_fasta_protein ) # encode structural properties into a dataframe
+        df_sp[ 'fasta_header' ] = list( dict_header[ i ] for i in df_sp.id_protein.values ) # retrieve headers
         df_sp.to_csv( f"{dir_folder_pipeline}{name_file}.tsv.gz", sep = '\t', index = False ) # save structural properties of input proteins as a tabular file
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :

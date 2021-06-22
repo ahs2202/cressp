@@ -3,7 +3,7 @@ from biobookshelf import *
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
-def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency ) :
+def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM ) :
     """
     Predict_T_cell_cross_reactivity
     """
@@ -113,6 +113,7 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
         df_subsequence_mhc_i[ 'target_subsequence_without_gap' ] = list( seq.replace( '-', '' ) for seq in df_subsequence_mhc_i.target_subsequence.values )
 
         ''' predict binding affinity of peptides pairs with MHCflurry '''
+        df_subsequence_mhc_i.reset_index( drop = True, inplace = True ) # reset index before join operation
         dict_data = dict( )
         for str_allele in l_mhc_i_allele :
             df_predicted_query_subsequence = predictor.predict( peptides = list( df_subsequence_mhc_i.query_subsequence_without_gap.values ), alleles = [ str_allele ], verbose = 0 ) 
@@ -124,6 +125,23 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
         df_subsequence_mhc_i = df_subsequence_mhc_i.join( pd.DataFrame( dict_data ) ) # combine predicted result
         df_subsequence_mhc_i.to_csv( f'{dir_folder_pipeline}t_cell.mhc_i.subsequence.filtered.binding_affinity.tsv.gz', sep = '\t', index = False )
 
+        ''' prepare a dataframe containing individual records '''
+        float_thres_product_binding_affinities = float_thres_binding_affinities_in_nM ** 2 # calculate a threshold for the product of binding affinities for cross-reactivity prediction
+         # prepare an array of indices
+        df_subsequence_mhc_i.reset_index( drop = True, inplace = True ) # reset index before join operation
+        arr_index = df_subsequence_mhc_i.index.values
+        l = [ ]
+        for mhc_i_allele in l_mhc_i_allele :
+            for index, affinity_query, affinity_target in zip( arr_index, dict_data[ f'query_affinity_{mhc_i_allele}' ], dict_data[ f'target_affinity_{mhc_i_allele}' ] ) :
+                if affinity_query * affinity_target <= float_thres_product_binding_affinities : # drop a pair of peptides if the geometric average of predicted binding affinity values (IC50) is above the threshold
+                    l.append( [ index, mhc_i_allele, affinity_query, affinity_target ] )    
+        df_subsequence_mhc_i.drop( columns = list( c for c in df_subsequence_mhc_i.columns.values if '_affinity_' in c ) + [ 'query_subsequence_without_gap', 'target_subsequence_without_gap' ], inplace = True ) # drop unnecessary columns
+        df_mhc_web = pd.DataFrame( l, columns = [ 'index', 'mhc_allele', 'affinity_query', 'affinity_target' ] ).set_index( 'index' ).join( df_subsequence_mhc_i, how = 'left' ) 
+        df_mhc_web[ 'mhc_class' ] = ( df_mhc_web.mhc_allele.apply( len ) > len( 'B*18:01' ) ).astype( int ) + 1 # retrieve the mhc_class of mhc_allele based on mhc_allele length
+        df_mhc_web[ 'score_for_sorting' ] = df_mhc_web.score_blosum / ( df_mhc_web.affinity_query * df_mhc_web.affinity_target ) ** 0.5 # calculate score for sorting
+        df_mhc_web.to_csv( f"{dir_folder_pipeline}t_cell.mhc_binding.tsv.gz", sep = '\t', index = False )
+
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
+            
