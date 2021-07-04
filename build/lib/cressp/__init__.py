@@ -2,7 +2,7 @@
 from .__main__ import *
 
 # Version of cressp package
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # import modules
 

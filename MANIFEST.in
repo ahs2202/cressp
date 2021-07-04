@@ -1,4 +1,5 @@
 include cressp/data/blosum62.tsv.gz
+include cressp/web_application/cressp_web_viewer.html
 exclude cressp/structural_property_estimation/RSA.Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5
 exclude cressp/structural_property_estimation/RSA.Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5.download_completed.flag
 exclude cressp/data/pdb/swiss_model.tsv.gz
@@ -17,5 +18,3 @@ exclude cressp/data/human/hmmdb_autoantigen.hmm.gz
 exclude cressp/data/human/hmmdb_autoantigen.hmm.gz.download_completed.flag
 exclude cressp/data/mhc_population_allele_frequency.tsv.gz
 exclude cressp/data/mhc_population_allele_frequency.tsv.gz.download_completed.flag
-
-
