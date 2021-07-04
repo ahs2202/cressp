@@ -123,6 +123,20 @@ dict_sp = cressp.Parse_Structural_Properties( "output/UP000464024_2697049.tsv.gz
 
 
 
+#### visualization of analysis results with CRESSP-web-viewer
+
+Open <u>CRESSP Web Viewer</u> `CRESSP_Web_Viewer.html` in the output directory with a web browser.
+
+<u>CRESSP Web Viewer</u> can be also found [**here**](https://ahs2202.github.io/cressp/).
+
+![CRESSP Logo](https://raw.githubusercontent.com/ahs2202/cressp/master/documentation/CRESSP_Web_Viewer_before_loading.png)
+
+
+
+Then, load (drag & drop) CRESSP output files in the `web_application/` subdirectory of the output directory. Once all necessary files has been loaded, the text on the grey button will change into 'Start Analysis'. Click the button to explore CRESSP analysis output files (below is an example screen of CRESSP Web Viewer).
+
+![CRESSP Logo](https://raw.githubusercontent.com/ahs2202/cressp/master/documentation/CRESSP_Web_Viewer_after_loading.png)
+
 
 
 ## Tutorial

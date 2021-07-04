@@ -1,0 +1,56 @@
+{
+      "n_threads": 2,
+      "flag_use_HMM_search": true,
+      "flag_use_rcsb_pdb_only": false,
+      "flag_only_use_structural_properties_of_query_proteins": false,
+      "float_thres_avg_blosum62_score_for_mhc": 2.0,
+      "float_thres_min_mhc_allele_frequency": 0.5,
+      "l_window_size": [
+            30
+      ],
+      "float_thres_e_value": 0.05,
+      "float_thres_avg_score_blosum_weighted__b_cell": 0.15,
+      "float_thres_avg_score_blosum__b_cell": 0.0,
+      "float_thres_rsa_correlation": 0.0,
+      "float_thres_binding_affinities_in_nM": 500.0,
+      "dir_file_protein_target": "/home/merit_an/temp/cressp_test/cressp_out/pipeline/protein_target.fasta",
+      "dir_file_protein_query": "/home/merit_an/temp/cressp_test/cressp_out/pipeline/protein_query.fasta",
+      "dir_folder_output": "/home/merit_an/temp/cressp_test/cressp_out/",
+      "dir_file_query_hmmdb": "/home/merit_an/temp/cressp/cressp/data/human/hmmdb_autoantigen.hmm",
+      "dir_folder_pipeline": "/home/merit_an/temp/cressp_test/cressp_out/pipeline/",
+      "dir_folder_pipeline_temp": "/home/merit_an/temp/cressp_test/cressp_out/pipeline/temp/",
+      "dir_folder_pipeline_struc": "/home/merit_an/temp/cressp_test/cressp_out/pipeline/struc/",
+      "dir_folder_pipeline_web": "/home/merit_an/temp/cressp_test/cressp_out/pipeline/web_application/",
+      "dir_folder_web": "/home/merit_an/temp/cressp_test/cressp_out/web_application/",
+      "name_file_protein_query": "human_uniprot",
+      "name_file_protein_target": "uniprot-organism_sars2-filtered-reviewed_yes",
+      "name_file_b_cell": "b_cell.subsequence",
+      "name_file_t_cell": "t_cell.mhc_binding",
+      "dict_bcell_crossreactivity_data_to_n_records": {
+            "nonredundant_sequence": {
+                  "30": 398
+            }
+      },
+      "dict_tcell_crossreactivity_data_to_n_records": {
+            "all": 23
+      },
+      "l_name_file_web": [
+            "cressp_web_viewer_setting.json",
+            "alignment_target_pdb.tsv.gz.base64.txt",
+            "alignment_query_pdb.tsv.gz.base64.txt",
+            "alignment_query_target.tsv.gz.base64.txt",
+            "acc_query.tsv.gz.base64.txt",
+            "acc_target.tsv.gz.base64.txt",
+            "BCellCrossReactivity.nonredundant_sequence.windowSize_30.top_398.tsv.gz.base64.txt",
+            "mhc_allele.tsv.gz.base64.txt",
+            "TCellCrossReactivity.all.top_23.tsv.gz.base64.txt",
+            "acc_pdb.tsv.gz.base64.txt",
+            "blosum62.tsv.gz.base64.txt",
+            "alignment_query_target__compact__for_web_application.tsv.gz.base64.txt",
+            "alignment_query_pdb__compact__for_web_application.tsv.gz.base64.txt",
+            "alignment_target_pdb__compact__for_web_application.tsv.gz.base64.txt",
+            "structural_property_query__compact__for_web_application.tsv.gz.base64.txt",
+            "structural_property_target__compact__for_web_application.tsv.gz.base64.txt"
+      ],
+      "str_time_completed": "2021.07.05 (01:40)"
+}
