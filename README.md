@@ -133,7 +133,7 @@ Open <u>CRESSP Web Viewer</u> `CRESSP_Web_Viewer.html` in the output directory w
 
 
 
-Then, load (drag & drop) CRESSP output files in the `web_application/` subdirectory of the output directory. Once all necessary files has been loaded, the text on the grey button will change into 'Start Analysis'. Click the button to explore CRESSP analysis output files (below is an example screen of CRESSP Web Viewer).
+Then, load (drag & drop) CRESSP output files in the `web_application/` subdirectory of the output directory. Once all necessary files has been loaded, the text on the grey button will change into 'Start Analysis'. Click the button to explore CRESSP analysis results. (Below is an example screen of <u>CRESSP Web Viewer</u>). Example CRESSP output files can be found at **[here](https://github.com/ahs2202/cressp/tree/main/documentation/tutorial/web_application)**.
 
 ![CRESSP Logo](https://raw.githubusercontent.com/ahs2202/cressp/master/documentation/CRESSP_Web_Viewer_after_loading.png)
 
@@ -141,16 +141,9 @@ Then, load (drag & drop) CRESSP output files in the `web_application/` subdirect
 
 ## Tutorial
 
-Download the proteome of SARS-CoV-2 from UniProt ([UP000464024](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Viruses/UP000464024/UP000464024_2697049.fasta.gz)) as a FASTA sequence
+1) Download the proteome of SARS-CoV-2 from UniProt ([UP000464024](https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Viruses/UP000464024/UP000464024_2697049.fasta.gz)) as a FASTA sequence.
 
-
-
-run CRESSP with the following command will do the following tasks:
-
-1. Search SARS-CoV-2 protein sequences with human protein sequences with BLASTP and HMMER3, and
-2. Align SARS-CoV-2 protein sequences against known or predicted protein structures from the [RCSB-PDB](https://www.rcsb.org/) database and the [SWISS-MODEL Repository](https://swissmodel.expasy.org/repository).
-3. Predict structural properties (surface accessibility and secondary structure) of protein residues not covered by the protein structure databases using Deep Neural Network (DNN) models trained on the protein structure databases.
-4. Calculate similarity scores based on estimated structural properties of SARS-CoV-2 proteins and (pre-computed) structural properties of human proteins
+2) Run CRESSP with the following command. (CRESSP can be also used as a python package)
 
 ```bash
     cressp -t UP000464024_2697049.fasta.gz --flag_use_HMM_search --float_thres_e_value 5e-2 --cpu 2
@@ -158,3 +151,17 @@ run CRESSP with the following command will do the following tasks:
 
 
 
+Running CRESSP with the above command will do the following tasks:
+
+1. Search SARS-CoV-2 protein sequences with human protein sequences with BLASTP and HMMER3, and
+2. Align SARS-CoV-2 protein sequences against known or predicted protein structures from the [RCSB-PDB](https://www.rcsb.org/) database and the [SWISS-MODEL Repository](https://swissmodel.expasy.org/repository).
+3. Predict structural properties (surface accessibility and secondary structure) of protein residues not covered by the protein structure databases using Deep Neural Network (DNN) models trained on the protein structure databases.
+4. Calculate similarity scores based on estimated structural properties of SARS-CoV-2 proteins and (pre-computed) structural properties of human proteins
+
+
+
+3) Open [CRESSP Web Viewer](https://ahs2202.github.io/cressp/)
+
+4) Load [CRESSP output files](https://github.com/ahs2202/cressp/tree/main/documentation/tutorial/web_application)  in the `web_application/` subdirectory of the output directory.
+
+5) Interactively explore the results!
