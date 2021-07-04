@@ -91,6 +91,7 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     dir_remote = 'https://github.com/ahs2202/cressp2/raw/main/cressp/' # remote directory from which datafiles will be downloaded
     dir_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
     
+    dir_folder_output = dict_cressp_setting[ 'dir_folder_output' ]
     dir_folder_pipeline = dict_cressp_setting[ 'dir_folder_pipeline' ]
     dir_folder_pipeline_temp = dict_cressp_setting[ 'dir_folder_pipeline_temp' ]
     n_threads = dict_cressp_setting[ 'n_threads' ]
@@ -196,7 +197,7 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     df_acc_target = __Encode_to_Integer__( np.concatenate( [ df_subsequence_pdb_web.target_accession.values, df_mhc_web.target_accession.values ] ), spread_based_on_weight = True ).sort_values( 'encoding' ) # sort in order to use integer index to access records in the web application
     df_acc_pdb = __Encode_to_Integer__( np.concatenate( [ df_subsequence_pdb_web.structure_id_query.values, df_subsequence_pdb_web.structure_id_target.values ] ), spread_based_on_weight = True ).sort_values( 'encoding' )
 
-    # retrieve fasta header for query and target proteins in the exported data
+    # retrieve fasta header and sequences for query and target proteins in the exported data
     def __Read_Fasta_Header__( dir_file_fasta ) :
         ''' read fasta headers of an unzipped fasta file '''
         l = [ ]
@@ -209,18 +210,20 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
                     l.append( line.strip( )[ 1 : ] )
         return l
 
-    mo = MAP.Map( dict( ( h.split( ' ', 1 )[ 0 ], h ) for h in __Read_Fasta_Header__( f'{dir_folder_pipeline}protein_query.fasta' ) ) )
-    df_acc_query[ 'fasta_header' ] = df_acc_query.value.apply( mo.a2b )
-    mo = MAP.Map( dict( ( h.split( ' ', 1 )[ 0 ], h ) for h in __Read_Fasta_Header__( f'{dir_folder_pipeline}protein_target.fasta' ) ) )
-    df_acc_target[ 'fasta_header' ] = df_acc_target.value.apply( mo.a2b )
-
+    for df_acc, dir_file_fasta in zip( [ df_acc_query, df_acc_target ], [  f'{dir_folder_pipeline}protein_query.fasta',  f'{dir_folder_pipeline}protein_target.fasta' ] ) :
+        dict_fasta = FASTA_Read( dir_file_fasta )
+        mo = MAP.Map( dict( ( h.split( ' ', 1 )[ 0 ], h ) for h in dict_fasta ) )
+        df_acc[ 'fasta_header' ] = df_acc.value.apply( mo.a2b )
+        mo = MAP.Map( dict( ( h.split( ' ', 1 )[ 0 ], dict_fasta[ h ] ) for h in dict_fasta ) )
+        df_acc[ 'sequence' ] = df_acc.value.apply( mo.a2b )
+        
     # save intermediate results
     df_acc_query.to_csv( f'{dir_folder_pipeline_web}acc_query.source.tsv.gz', sep = '\t', index = False )
     df_acc_target.to_csv( f'{dir_folder_pipeline_web}acc_target.source.tsv.gz', sep = '\t', index = False )
     df_acc_pdb.to_csv( f'{dir_folder_pipeline_web}acc_pdb.source.tsv.gz', sep = '\t', index = False )
     # save accessions for web application
-    df_acc_query.to_csv( f'{dir_folder_pipeline_web}acc_query.tsv', columns = [ 'value', 'n_counts', 'fasta_header' ], sep = '\t', index = False )
-    df_acc_target.to_csv( f'{dir_folder_pipeline_web}acc_target.tsv', columns = [ 'value', 'n_counts', 'fasta_header' ], sep = '\t', index = False )
+    df_acc_query.to_csv( f'{dir_folder_pipeline_web}acc_query.tsv', columns = [ 'value', 'n_counts', 'fasta_header', 'sequence' ], sep = '\t', index = False )
+    df_acc_target.to_csv( f'{dir_folder_pipeline_web}acc_target.tsv', columns = [ 'value', 'n_counts', 'fasta_header', 'sequence' ], sep = '\t', index = False )
 
     # replace accession_id columns in the B-cell CrossReactivity data with 0-based row-index of each dataframe
     mo = MAP.Map( dict( ( value, index ) for index, value in enumerate( df_acc_query.value.values ) ) )
@@ -512,4 +515,12 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     with open( f"{dir_folder_web}{name_file_cressp_web_viewer_setting}", 'w' ) as newfile :
         json.dump( dict_cressp_setting, newfile, indent = 6 )
 
-    
+    # copy web viewer to 
+    shutil.copyfile( f"{dir_folder_cressp}web_application/cressp_web_viewer.html", f"{dir_folder_output}CRESSP_Web_Viewer.html" )
+    # write read-me file
+    with open( f'{dir_folder_output}readme.txt', 'w' ) as newfile :
+        newfile.write( '\n'.join( [ 
+            'CRESSP_Web_Viewer.html\t(web application)\t(1) please open CRESSP web viewer with a compatible web browser (tested on Google Chrome and MicroSoft Edge)',
+            '\t\t(2) drag & drop files in web_application/ folder (>16 files, depending on the input file size) and click "start analysis" button',
+            'web_application/\t(folder)\ta folder containing input files for CRESSP web viewer. gzipped base64 encoded text files were used to reduce the file size. unzipped original files can be found at pipeline/web_application/ folder',
+            'pipeline/\t(folder)\ta folder containing intermediate data files, including alignment results and structural property estimation and prediction results.' ] ) + '\n' )

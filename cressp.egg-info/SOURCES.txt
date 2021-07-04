@@ -20,4 +20,5 @@ cressp/data/parse_data.py
 cressp/structural_property_estimation/__init__.py
 cressp/structural_property_estimation/main.py
 cressp/web_application/__init__.py
+cressp/web_application/cressp_web_viewer.html
 cressp/web_application/prepare_data.py
