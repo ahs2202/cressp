@@ -121,6 +121,7 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     """ Modify coordinates of RCSB_PDB structures """
     # modify aligned coordinates of PDB structures so that it accurately match that in 'label_seq_id' (PDB sequence is often fragment of its parent proteins) 
     df_subsequence_pdb_web = pd.read_csv( f"{dir_folder_pipeline_web}{name_file_b_cell}.1.position_aligned_structure_added.tsv.gz", sep = '\t' )
+    PKG.Download_Data( "data/pdb/rcsb_pdb.label_seq_id.start_end.tsv.gz", dir_remote, name_package ) # download data
     Map = MAP.Map( pd.read_csv( f"{dir_folder_cressp}data/pdb/rcsb_pdb.label_seq_id.start_end.tsv.gz", sep = '\t' ).set_index( 'structure_id' ).int_index_residue_start.to_dict( ) ) # read structure_id -> 'label_seq_id' start position mapping
     df_subsequence_pdb_web.structure_id_query_start = df_subsequence_pdb_web.structure_id_query_start + df_subsequence_pdb_web.structure_id_query.apply( Map.a2b ) - 1
     df_subsequence_pdb_web.structure_id_query_end = df_subsequence_pdb_web.structure_id_query_end + df_subsequence_pdb_web.structure_id_query.apply( Map.a2b ) - 1
@@ -303,6 +304,7 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     df_acc_pdb.id_pdb = df_acc_pdb.id_pdb.str.lower( )
 
     # read entity records
+    PKG.Download_Data( "data/pdb/rcsb_pdb.id_model_and_label_entity_id.tsv.gz", dir_remote, name_package ) # download data
     df_pdb_entity = pd.read_csv( f"{dir_folder_cressp}data/pdb/rcsb_pdb.id_model_and_label_entity_id.tsv.gz", sep = '\t', keep_default_na = False )
     df_pdb_entity = PD_Select( df_pdb_entity, id_pdb = df_acc_pdb.id_pdb.values ) # subset the entity records to accelerate the downstream operations
     # build index and value for faster accession

@@ -88,7 +88,7 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     Package settings
     """
     name_package = 'cressp'
-    dir_remote = 'https://github.com/ahs2202/cressp2/raw/main/cressp/' # remote directory from which datafiles will be downloaded
+    dir_remote = 'https://github.com/ahs2202/cressp/raw/main/cressp/' # remote directory from which datafiles will be downloaded
     dir_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
     
     dir_folder_output = dict_cressp_setting[ 'dir_folder_output' ]

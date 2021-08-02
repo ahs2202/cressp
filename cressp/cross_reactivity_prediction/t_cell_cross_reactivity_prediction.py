@@ -12,7 +12,7 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
     Package settings
     """
     name_package = 'cressp'
-    dir_remote = 'https://github.com/ahs2202/cressp2/raw/main/cressp/' # remote directory from which datafiles will be downloaded
+    dir_remote = 'https://github.com/ahs2202/cressp/raw/main/cressp/' # remote directory from which datafiles will be downloaded
     dir_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
 
     ''' read dict_blosum62 from the tsv file '''
