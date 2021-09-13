@@ -3,7 +3,7 @@ from biobookshelf import *
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
-def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM ) :
+def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM, flag_replace_unconventional_acid_code ) :
     """
     Predict_T_cell_cross_reactivity
     """
@@ -89,6 +89,68 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
     Calculate T-cell epitope similarity
     """
 
+    """ check flag """
+    dir_file_flag = f'{dir_folder_pipeline}t_cell.mhc_i.subsequence.filtered.binding_affinity.tsv.gz.completed.flag'
+    if not os.path.exists( dir_file_flag ) :
+
+        if 'df_subsequence_mhc_i' not in locals( ) :
+            df_subsequence_mhc_i = pd.read_csv( f'{dir_folder_pipeline}t_cell.mhc_i.subsequence.filtered.tsv.gz', sep = '\t' )
+
+        # retrieve list of common MHC allele names
+        from mhcflurry import Class1PresentationPredictor # load MHCflurry predictor
+
+        ''' load MHCFlurry binding affinity predictor '''
+        predictor = Class1PresentationPredictor.load( ) # load MHCflurry predictor for benchmarking
+
+        ''' retrieve MHC-I alleles with allele frequency larger then the given threshold in at least one population '''
+        df_mhc_af = pd.read_csv( f"{dir_folder_cressp}data/mhc_population_allele_frequency.tsv.gz", sep = '\t', index_col = [ 0, 1 ] )
+        l_mhc_i_allele = PD_Threshold( ( df_mhc_af.loc[ 'I' ] > float_thres_min_mhc_allele_frequency ).sum( axis = 1 ), a = 0 ).index.values # retrieve mhc_i_alleles with allele frequency > 'float_thres_min_mhc_allele_frequency' in at least one population
+        l_mhc_i_allele = list( set( l_mhc_i_allele ).intersection( predictor.supported_alleles ) ) # retrive valid alleles for MHCflurry
+
+        ''' remove subsequences containing invalid amino acids, and retrieve subsequences without gaps '''
+        l_aa_invalid = list( "XBJZ" ) if flag_replace_unconventional_acid_code else list( "OBJUZX" ) # define invalid amino acids based on settings 'flag_replace_unconventional_acid_code'
+        df_subsequence_mhc_i = PD_Search( df_subsequence_mhc_i, query_subsequence = l_aa_invalid, target_subsequence = l_aa_invalid, is_negative_query = True ) # retrive subset of df_subsequence for MHC_I allele binding prediction # invalid residues 'B' and 'Z' should be removed 
+        df_subsequence_mhc_i[ 'query_subsequence_without_gap' ] = list( seq.replace( '-', '' ).replace( 'U', 'C' ).replace( 'O', 'Y' ) for seq in df_subsequence_mhc_i.query_subsequence.values ) if flag_replace_unconventional_acid_code else list( seq.replace( '-', '' ) for seq in df_subsequence_mhc_i.query_subsequence.values ) # remove gap in the aligment and use the sequence as inputs
+        df_subsequence_mhc_i[ 'target_subsequence_without_gap' ] = list( seq.replace( '-', '' ).replace( 'U', 'C' ).replace( 'O', 'Y' ) for seq in df_subsequence_mhc_i.target_subsequence.values ) if flag_replace_unconventional_acid_code else list( seq.replace( '-', '' ) for seq in df_subsequence_mhc_i.target_subsequence.values )
+
+        int_min_len_peptide = 5 # lower limit of the length of the peptide for binding affinity prediction
+        df_subsequence_mhc_i = df_subsequence_mhc_i[ ( df_subsequence_mhc_i.query_subsequence_without_gap.apply( len ) >= int_min_len_peptide ) & ( df_subsequence_mhc_i.target_subsequence_without_gap.apply( len ) >= int_min_len_peptide ) ] # drop aligned peptides with peptide shorter than the minimum peptide length of prediction algorithm (MHCflurry)
+
+        ''' predict binding affinity of peptides pairs with MHCflurry '''
+        df_subsequence_mhc_i.reset_index( drop = True, inplace = True ) # reset index before join operation
+        dict_data = dict( )
+        for str_allele in l_mhc_i_allele :
+            df_predicted_query_subsequence = predictor.predict( peptides = list( df_subsequence_mhc_i.query_subsequence_without_gap.values ), alleles = [ str_allele ], verbose = 0 ) 
+            df_predicted_target_subsequence = predictor.predict( peptides = list( df_subsequence_mhc_i.target_subsequence_without_gap.values ), alleles = [ str_allele ], verbose = 0 ) # remove gap in the aligment and use the sequence as inputs
+            if 'query_processing_score' not in dict_data : dict_data[ 'query_processing_score' ] = df_predicted_query_subsequence.processing_score.values # retreve processing score only once for query and target peptides
+            if 'target_processing_score' not in dict_data : dict_data[ 'target_processing_score' ] = df_predicted_target_subsequence.processing_score.values
+            dict_data[ f'query_affinity_{str_allele}' ] = df_predicted_query_subsequence.affinity.values
+            dict_data[ f'target_affinity_{str_allele}' ] = df_predicted_target_subsequence.affinity.values
+        df_subsequence_mhc_i = df_subsequence_mhc_i.join( pd.DataFrame( dict_data ) ) # combine predicted result
+        df_subsequence_mhc_i.to_csv( f'{dir_folder_pipeline}t_cell.mhc_i.subsequence.filtered.binding_affinity.tsv.gz', sep = '\t', index = False )
+
+        ''' prepare a dataframe containing individual records '''
+        float_thres_product_binding_affinities = float_thres_binding_affinities_in_nM ** 2 # calculate a threshold for the product of binding affinities for cross-reactivity prediction
+         # prepare an array of indices
+        df_subsequence_mhc_i.reset_index( drop = True, inplace = True ) # reset index before join operation
+        arr_index = df_subsequence_mhc_i.index.values
+        l = [ ]
+        for mhc_i_allele in l_mhc_i_allele :
+            for index, affinity_query, affinity_target in zip( arr_index, dict_data[ f'query_affinity_{mhc_i_allele}' ], dict_data[ f'target_affinity_{mhc_i_allele}' ] ) :
+                if affinity_query * affinity_target <= float_thres_product_binding_affinities : # drop a pair of peptides if the geometric average of predicted binding affinity values (IC50) is above the threshold
+                    l.append( [ index, mhc_i_allele, affinity_query, affinity_target ] )    
+        df_subsequence_mhc_i.drop( columns = list( c for c in df_subsequence_mhc_i.columns.values if '_affinity_' in c ) + [ 'query_subsequence_without_gap', 'target_subsequence_without_gap' ], inplace = True ) # drop unnecessary columns
+        df_mhc_web = pd.DataFrame( l, columns = [ 'index', 'mhc_allele', 'affinity_query', 'affinity_target' ] ).set_index( 'index' ).join( df_subsequence_mhc_i, how = 'left' ) 
+        df_mhc_web[ 'mhc_class' ] = ( df_mhc_web.mhc_allele.apply( len ) > len( 'B*18:01' ) ).astype( int ) + 1 # retrieve the mhc_class of mhc_allele based on mhc_allele length
+        df_mhc_web[ 'score_for_sorting' ] = df_mhc_web.score_blosum / ( df_mhc_web.affinity_query * df_mhc_web.affinity_target ) ** 0.5 # calculate score for sorting
+        df_mhc_web.to_csv( f"{dir_folder_pipeline}t_cell.mhc_binding.tsv.gz", sep = '\t', index = False )
+
+        """ set flag """
+        with open( dir_file_flag, 'w' ) as newfile :
+            newfile.write( 'completed\n' )
+        
+        
+    
     """ check flag """
     dir_file_flag = f'{dir_folder_pipeline}t_cell.mhc_i.subsequence.filtered.binding_affinity.tsv.gz.completed.flag'
     if not os.path.exists( dir_file_flag ) :

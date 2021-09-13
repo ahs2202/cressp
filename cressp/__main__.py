@@ -110,6 +110,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         parser.add_argument( "-b", "--float_thres_avg_blosum62_score_for_mhc", help = "(Default: 2.0) threshold for average BLOSOM62 alignment score for filtering predicted cross-reactive T-cell epitopes (cross-reactive MHC epitopes)", default = '2.0' )
         parser.add_argument( "-m", "--float_thres_min_mhc_allele_frequency", help = "(Default: 0.5) a threshold for filtering out MHC alleles with low allele frequencies. MHC alleles with allele frequency above the threshold for at least one population will be used for cross-reactive T-cell epitope prediction", default = '0.5' )
         parser.add_argument( "-a", "--float_thres_binding_affinities_in_nM", help = "(Default: 500) a threshold predicted IC50 values for filtering predicted T-cell cross-reactive epitopes. A pair of peptides whose geometric average of predicted binding affinities (IC50) values above this threshold will be removed.", default = '500' )
+        parser.add_argument( "-U", "--flag_replace_unconventional_acid_code", help = "(Default: False) If this flag is set, unconventional amino acids in the input protein sequences will be replaced with chemically similar amino acid. Specifically, Selenocysteine (U) to Cysteine (C), Pyrrolysine (O) to Tyrosine (Y)", action = 'store_true' )
         parser.add_argument( "-G", "--flag_use_all_gpu_devices", help = "(Default: False) Use all available GPU devices during prediction of RSA values. When this flag is set to True, the RSA prediction might be completed faster, but all GPU memories will be occupied by Tensorflow", action = 'store_true' )
         args = parser.parse_args( )
         if args.dir_file_protein_target is None :
@@ -121,6 +122,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         flag_use_rcsb_pdb_only = args.flag_use_rcsb_pdb_only
         flag_only_use_structural_properties_of_query_proteins = args.flag_only_use_structural_properties_of_query_proteins
         flag_use_all_gpu_devices = args.flag_use_all_gpu_devices
+        flag_replace_unconventional_acid_code = args.flag_replace_unconventional_acid_code
         int_number_of_proteins_in_a_batch_during_dnn_prediction = int( args.int_number_of_proteins_in_a_batch_during_dnn_prediction )
         n_threads = min( int( args.cpu ), int( multiprocessing.cpu_count( ) ) ) # max number of n_threads is the CPU number of the current local machine
         float_thres_avg_blosum62_score_for_mhc = float( args.float_thres_avg_blosum62_score_for_mhc )
@@ -368,8 +370,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     """ 
     Calculate T-cell epitope similarity scores based on BLOSUM62 scores and predicted binding affinity scores.
     """
-    
-    Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM )
+    Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM, flag_replace_unconventional_acid_code )
 
     
     """
