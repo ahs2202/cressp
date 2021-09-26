@@ -131,11 +131,11 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     df_subsequence_pdb_web[ 'score_for_sorting' ] = ( df_subsequence_pdb_web.correl_coeffi_acc * df_subsequence_pdb_web.score_blosum_weighted ).fillna( -1 ) 
     # save an intermediate version
     df_subsequence_pdb_web.to_csv( f'{dir_folder_pipeline_web}{name_file_b_cell}.2.residue_pos_corrected.tsv.gz', sep = '\t', index = False ) 
-    
+
     """ 
     Process T-cell data 
     """
-    
+
     """ 
     Export skeletons of B-Tell and T-cell CrossReactivity data for Web application 
     """
@@ -186,6 +186,16 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     df_subsequence_pdb_web.id_alignment_structure_target = df_subsequence_pdb_web.id_alignment_structure_target.apply( mo.a2b )
 
     # encode accessions to integers ((1) make dataframe more compact and (2) to aid efficient visualization)
+    # read input fasta files (with key=accession)
+    dict_fasta_query = FASTA_Read( f'{dir_folder_pipeline}protein_query.fasta', header_split_at_space = True )
+    dict_fasta_target = FASTA_Read( f'{dir_folder_pipeline}protein_target.fasta', header_split_at_space = True )
+    # retrieve valid target and query accession (if accession has been changed to something else due to handling error throughput the pipeline, they will be filtered out)
+    set_query_accession = set( dict_fasta_query )
+    set_target_accession = set( dict_fasta_target )
+    # retrieve records of valid target and query accessions
+    df_subsequence_pdb_web = PD_Select( df_subsequence_pdb_web, query_accession = set_query_accession, target_accession = set_target_accession )
+    df_mhc_web = PD_Select( df_mhc_web, query_accession = set_query_accession, target_accession = set_target_accession )
+
     def __Encode_to_Integer__( l, spread_based_on_weight = True ) :
         ''' encode given list of values to integer.
         'spread_based_on_weight': count the values in the given list to assign integer more effectively (spread integers for efficient visualization on 'rainbow' colormap) '''
@@ -217,7 +227,7 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
         df_acc[ 'fasta_header' ] = df_acc.value.apply( mo.a2b )
         mo = MAP.Map( dict( ( h.split( ' ', 1 )[ 0 ], dict_fasta[ h ] ) for h in dict_fasta ) )
         df_acc[ 'sequence' ] = df_acc.value.apply( mo.a2b )
-        
+
     # save intermediate results
     df_acc_query.to_csv( f'{dir_folder_pipeline_web}acc_query.source.tsv.gz', sep = '\t', index = False )
     df_acc_target.to_csv( f'{dir_folder_pipeline_web}acc_target.source.tsv.gz', sep = '\t', index = False )
@@ -365,8 +375,8 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     df_fasta_acc_query = pd.read_csv( f'{dir_folder_pipeline}protein_query.tsv.gz', sep = '\t' ) # load structural property data for target sequences 
     df_fasta_acc_target = pd.read_csv( f'{dir_folder_pipeline}protein_target.tsv.gz', sep = '\t' ) # load structural property data for target sequences 
 
-    df_fasta_acc_query_subset = df_fasta_acc_query.set_index( str_col_id ).loc[ df_acc_query.value.values ].reset_index( )
-    df_fasta_acc_target_subset = df_fasta_acc_target.set_index( str_col_id ).loc[ df_acc_target.value.values ].reset_index( )
+    df_fasta_acc_query_subset = PD_Subset( df_fasta_acc_query.set_index( str_col_id ), subset = df_acc_query.value.values ).reset_index( )
+    df_fasta_acc_target_subset = PD_Subset( df_fasta_acc_target.set_index( str_col_id ), subset = df_acc_target.value.values ).reset_index( )
     # parse structural data of query sequences
     df_fasta_acc_query_subset.set_index( str_col_id, inplace = True )
     df_fasta_acc_query_subset[ 'rsa___ascii_encoding_1_character_from_33_to_126__from_0_to_1__for_web_application' ] = pd.Series( ASCII_Encode( ASCII_Decode( df_fasta_acc_query_subset[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa ), ** dict_kw_rsa_for_web_application ) )
@@ -402,6 +412,7 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     # write compact alignment and structural property records by discarding the portion of data values that were not linked to the records in the BCellCrossReactivity data
     for df, filename, l_col in zip( [ df_matched_subset, df_blastp_pdb_query_subset, df_blastp_pdb_target_subset, df_fasta_acc_query_subset, df_fasta_acc_target_subset ], [ 'alignment_query_target', 'alignment_query_pdb', 'alignment_target_pdb', 'structural_property_query', 'structural_property_target' ], [ [ 'query_alignment', 'target_alignment' ], [ 'query_alignment', 'target_alignment' ], [ 'query_alignment', 'target_alignment' ], l_col_acc_query, l_col_acc_target ] ) : # dict_dict_it :
         arr_data = df[ l_col ].values # retrieve data values from the dataframe
+        # use pre-initialized list of list to compose a dataframe since iterating a dictionary does not guarantee the order of keys
         l_l_value = list( list( ) for index in range( len( arr_data ) ) ) # initialize a list that will store compact data values after discarding regions that are not linked to BCellCrossReactivity data
         dict_it = dict_dict_it[ filename ]
         for index in dict_it :

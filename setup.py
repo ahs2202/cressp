@@ -12,7 +12,7 @@ with open(os.path.join(HERE, "README.md")) as fid:
 
 setup(
     name='cressp',
-    version='0.2.2',
+    version='0.2.3',
     author="Hyunsu An",
     author_email="ahs2202@gm.gist.ac.kr",
     description="a program to find cross-reactive epitopes with structural information from known protein structures.",

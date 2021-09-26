@@ -561,13 +561,13 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
             with open( dir_file_flag, 'w' ) as newfile :
                 newfile.write( 'completed\n' )
 
-                
+    """ 
+    Combine Structural Properties and Predict Structural Properties of Remaining Residues
+    """  
     """ check flag """
     dir_file_flag = f"{dir_folder_pipeline}{name_file}.tsv.gz.completed.flag"
     if not os.path.exists( dir_file_flag ) :
-
-        with Pool( 1 ) as p : 
-            l = p.starmap( __Combine_Structural_Properties_and_Predict_Remaining_Residues__, [ [ dir_file_protein, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only, int_number_of_proteins_in_a_batch_during_dnn_prediction, flag_use_all_gpu_devices ] ] ) # use a subprocess to predict RSA
+        __Combine_Structural_Properties_and_Predict_Remaining_Residues__( dir_file_protein, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only, int_number_of_proteins_in_a_batch_during_dnn_prediction, flag_use_all_gpu_devices ) # predict RSA
             
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
