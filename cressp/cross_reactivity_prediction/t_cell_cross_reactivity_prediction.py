@@ -86,7 +86,7 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
 
 
     """ 
-    Calculate T-cell epitope similarity
+    Predict MHC binding affinity
     """
 
     """ check flag """
