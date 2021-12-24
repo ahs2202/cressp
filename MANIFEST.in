@@ -4,6 +4,8 @@ exclude cressp/structural_property_estimation/RSA.Conv1D.5_large_and_wide_dense.
 exclude cressp/structural_property_estimation/RSA.Conv1D.5_large_and_wide_dense.epoch_082.val_loss_0.1185.hdf5.download_completed.flag
 exclude cressp/data/pdb/swiss_model.tsv.gz
 exclude cressp/data/pdb/swiss_model.tsv.gz.download_completed.flag
+exclude cressp/data/pdb/AlphaFoldStructureDB.tsv.gz
+exclude cressp/data/pdb/AlphaFoldStructureDB.tsv.gz.download_completed.flag
 exclude cressp/data/pdb/rcsb_pdb.tsv.gz
 exclude cressp/data/pdb/rcsb_pdb.tsv.gz.download_completed.flag
 exclude cressp/data/pdb/rcsb_pdb.label_seq_id.start_end.tsv.gz
@@ -18,3 +20,5 @@ exclude cressp/data/human/hmmdb_autoantigen.hmm.gz
 exclude cressp/data/human/hmmdb_autoantigen.hmm.gz.download_completed.flag
 exclude cressp/data/mhc_population_allele_frequency.tsv.gz
 exclude cressp/data/mhc_population_allele_frequency.tsv.gz.download_completed.flag
+exclude cressp/data/autoimmune_disease_associated_mhc_alleles.tsv.gz
+exclude cressp/data/autoimmune_disease_associated_mhc_alleles.tsv.gz.download_completed.flag

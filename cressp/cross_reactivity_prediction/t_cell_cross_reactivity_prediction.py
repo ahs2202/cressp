@@ -22,7 +22,7 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
         dict_blosum62[ aa_0, aa_1 ] = score
     
     """ 
-    Calculate T-cell epitope similarity
+    Extract subsequences from the alignments
     """
     
     """ retrieve subsequences from aligned query and target protein sequences """
@@ -164,10 +164,16 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
         ''' load MHCFlurry binding affinity predictor '''
         predictor = Class1PresentationPredictor.load( ) # load MHCflurry predictor for benchmarking
 
+        # download data
+        PKG.Download_Data( "data/autoimmune_disease_associated_mhc_alleles.tsv.gz", dir_remote, name_package ) 
+        PKG.Download_Data( "data/mhc_population_allele_frequency.tsv.gz", dir_remote, name_package ) 
         ''' retrieve MHC-I alleles with allele frequency larger then the given threshold in at least one population '''
-        PKG.Download_Data( "data/mhc_population_allele_frequency.tsv.gz", dir_remote, name_package ) # download data
         df_mhc_af = pd.read_csv( f"{dir_folder_cressp}data/mhc_population_allele_frequency.tsv.gz", sep = '\t', index_col = [ 0, 1 ] )
         l_mhc_i_allele = PD_Threshold( ( df_mhc_af.loc[ 'I' ] > float_thres_min_mhc_allele_frequency ).sum( axis = 1 ), a = 0 ).index.values # retrieve mhc_i_alleles with allele frequency > 'float_thres_min_mhc_allele_frequency' in at least one population
+        ''' add list of autoimmune-associated MHC alleles '''
+        df_mhc_autoimmune = pd.read_csv( f"{dir_folder_cressp}data/autoimmune_disease_associated_mhc_alleles.tsv.gz", sep = '\t' )
+        l_mhc_i_allele = list( set( l_mhc_i_allele ).union( df_mhc_autoimmune.mhc_allele.values ) )
+        ''' retrieve MHC-I alleles available for MHCFlurry binding affinity predictor '''
         l_mhc_i_allele = list( set( l_mhc_i_allele ).intersection( predictor.supported_alleles ) ) # retrive valid alleles for MHCflurry
 
         ''' remove subsequences containing invalid amino acids, and retrieve subsequences without gaps '''

@@ -4,12 +4,9 @@
 from biobookshelf.main import *
 from biobookshelf import *
 
-pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
 from cressp.structural_property_estimation import Estimate_structural_property
-
 from cressp.cross_reactivity_prediction import Predict_T_cell_cross_reactivity, Predict_B_cell_cross_reactivity
-
 from cressp.web_application import Prepare_data_for_web_application
 
 import argparse
@@ -18,6 +15,14 @@ import os, sys, getopt
 from io import StringIO
 import time
 import math
+
+pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
+import warnings
+warnings.filterwarnings( action = 'ignore' )
+# from scarab.quality_control import Estimate_structural_property
+
+# retrieve a function for logging
+Info = multiprocessing.get_logger( ).info
 
 #     # read dict_blosum62 from the tsv file
 #     df_blosum62 = pd.read_csv( f'{dir_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
@@ -78,6 +83,12 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     """
     Parse arguments
     """
+    # define logging levels
+    logger = multiprocessing.log_to_stderr( )
+    logger.setLevel( logging.INFO )
+    Info( 'CRESSP: comparative analysis of two sets of proteome for searching potentially cross-reactive B-cell and T-cell epitopes' )
+    Info( '[Pipeline Start] Pipeline Started at ' + TIME_GET_timestamp( True ) )
+    
     # fixed arguments
     float_search_thres_e_value = 30 # set e-value threshold for search (fixed for maximum sensitivity)
 
@@ -114,7 +125,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         parser.add_argument( "-G", "--flag_use_all_gpu_devices", help = "(Default: False) Use all available GPU devices during prediction of RSA values. When this flag is set to True, the RSA prediction might be completed faster, but all GPU memories will be occupied by Tensorflow", action = 'store_true' )
         args = parser.parse_args( )
         if args.dir_file_protein_target is None :
-            print( "Required argument(s) is missing. to view help message, use -h or --help flag" )
+            Info( '[Error] Required argument(s) is missing. to view help message, use -h or --help flag' )
             sys.exit( )
 
         # parse arguments # no further processing required
@@ -142,7 +153,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     else :
         ''' parse arguments when the function was called from an interactive Python interpreter '''
         if dir_file_protein_target is None :
-            print( "[CRESSP] required input 'dir_file_protein_target' was not given" )
+            Info( "[Error] required input 'dir_file_protein_target' was not given" )
             if flag_usage_from_command_line_interface : sys.exit( )
             else : return - 1
 
@@ -158,16 +169,13 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
             FASTA_Write( dir_file_protein_query, dict_fasta = dict_fasta_protein_query )
 
         if flag_use_HMM_search : 
-            if dir_file_query_hmmdb != 'human' :
-                print( "since query proteins is the default human proteins, the default HMM profile database will be used instead." )
-            PKG.Download_Data( "data/human/hmmdb_autoantigen.hmm.gz", dir_remote, name_package ) # download data
-            PKG.Gunzip_Data( "data/human/hmmdb_autoantigen.hmm.gz", name_package ) # unzip data
-            dir_file_query_hmmdb = pkg_resources.resource_filename( name_package, 'data/human/hmmdb_autoantigen.hmm' ) # set default 'dir_file_query_hmmdb'
+            if dir_file_query_hmmdb == 'human' :
+                PKG.Download_Data( "data/human/hmmdb_autoantigen.hmm.gz", dir_remote, name_package ) # download data
+                PKG.Gunzip_Data( "data/human/hmmdb_autoantigen.hmm.gz", name_package ) # unzip data
+                dir_file_query_hmmdb = pkg_resources.resource_filename( name_package, 'data/human/hmmdb_autoantigen.hmm' ) # set default 'dir_file_query_hmmdb'
     else :
-
-
         if flag_use_HMM_search and dir_file_query_hmmdb == 'human' :
-            print( "exiting since query proteins other than default human proteins were given, the default HMM profile database cannot be used" )
+            Info( "[Error] exiting since query proteins other than default human proteins were given, the default HMM profile database cannot be used." )
             if flag_usage_from_command_line_interface : sys.exit( )
             else : return - 1
     # get absolute paths for file arguments        
@@ -184,25 +192,15 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     # handle output folder
     if dir_folder_output[ -1 ] != '/' : # last character of a directory should be '/'
         dir_folder_output += '/'
-#     if os.path.exists( dir_folder_output ) :
-#         print( "exiting since the given output directory already exists" )
-#         if flag_usage_from_command_line_interface : sys.exit( )
-#         else : return - 1
-#     else :
-    os.makedirs( dir_folder_output, exist_ok = True )
-    # create output folders for each task
+    # define folder directories for each task
     dir_folder_pipeline = f"{dir_folder_output}pipeline/"
-    os.makedirs( dir_folder_pipeline, exist_ok = True )
     dir_folder_pipeline_temp = f'{dir_folder_pipeline}temp/' 
-    os.makedirs( dir_folder_pipeline_temp, exist_ok = True )
     dir_folder_pipeline_struc = f'{dir_folder_pipeline}struc/' # create a working directory of estimating structural properties
-    os.makedirs( dir_folder_pipeline_struc, exist_ok = True )
-    
-    # define folder directories for exporting data for web applications
     dir_folder_pipeline_web = f'{dir_folder_pipeline}web_application/' # a working directory for exporting data for web applications
-    os.makedirs( dir_folder_pipeline_web, exist_ok = True )
     dir_folder_web = f'{dir_folder_output}web_application/'
-    os.makedirs( dir_folder_web, exist_ok = True )
+    # create folders
+    for dir_folder in [ dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp, dir_folder_pipeline_struc, dir_folder_pipeline_web, dir_folder_web ] :
+        os.makedirs( dir_folder, exist_ok = True )
 
 
     """
@@ -225,7 +223,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     name_file_protein_target = __Get_File_Name_Without_Extension__( dir_file_protein_target ) # retrieve file name containing the query proteins
     
     """ check flag """
-    dir_file_flag = f"{dir_folder_pipeline}.copying_input_files_completed.flag"
+    dir_file_flag = f"{dir_folder_pipeline}copying_input_files_completed.flag"
     if not os.path.exists( dir_file_flag ) :
         
         try :
@@ -249,6 +247,12 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
+    else :
+        # define directories of input protein sequences and load query protein sequences
+        dir_file_protein_query = f"{dir_folder_pipeline}protein_query.fasta" # set directory of fasta file to the new file location
+        dir_file_protein_target = f"{dir_folder_pipeline}protein_target.fasta" # set directory of fasta file to the new file location
+        dict_fasta_protein_query = FASTA_Read( dir_file_protein_query ) # load protein sequences of query (required during BLASTP output processing)
+    Info( "[Task Completion] copying input protein sequence files was completed at " + TIME_GET_timestamp( True ) )
         
     """
     Report external and internal program settings
@@ -280,14 +284,26 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         'dir_folder_web' : dir_folder_web,
         'name_file_protein_query' : name_file_protein_query,
         'name_file_protein_target' : name_file_protein_target }
-    print( "cressp will be run with the following setting:" )
-    print( dict_cressp_setting )
-
+    
+    Info( f"[Setting] cressp will be run with the following setting: {str( dict_cressp_setting )}" )
+    
+    ''' export CRESSP setting '''
+    dir_file_json_setting_cressp = f"{dir_folder_pipeline}cressp_setting.json"
+    if os.path.exists( dir_file_json_setting_cressp ) :
+        with open( dir_file_json_setting_cressp, 'r' ) as file :
+            j = json.load( file )
+        if j != dict_cressp_setting :
+            Info( f"[Warning] the current CRESSP setting is different from the previous CRESSP setting recorded in the pipeline folder. The previous setting will be used." )
+            with open( dir_file_json_setting_cressp, 'r' ) as file :
+                dict_cressp_setting = json.load( file ) # override current CRESSP setting with previous CRESSP setting
+    with open( dir_file_json_setting_cressp, 'w' ) as newfile :
+        json.dump( dict_cressp_setting, newfile )    
+    
     """
     Perform BLASTP alignment
     """
     """ check flag """
-    dir_file_flag = f"{dir_folder_pipeline}.blastp_completed.flag"
+    dir_file_flag = f"{dir_folder_pipeline}blastp_completed.flag"
     if not os.path.exists( dir_file_flag ) :
 
         # create blastp_db using query_protein sequences
@@ -304,21 +320,26 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
-
+    else :
+        # define blastp output file
+        dir_file_blastp_output = f'{dir_folder_pipeline}blastp.tsv.gz'
+    Info( "[Task Completion] BLASTP search was completed at " + TIME_GET_timestamp( True ) )
+            
     """
     Perform HMMER alignment using a given HMM profile DB (using a couple of HMM profile DBs would be also helpful in the near future)
     """
     # run hmmsearch according to 'flag_use_HMM_search' flag
     if flag_use_HMM_search : 
         """ check flag """
-        dir_file_flag = f"{dir_folder_pipeline}.hmmsearch_completed.flag"
+        dir_file_flag = f"{dir_folder_pipeline}hmmsearch_completed.flag"
+        dir_file_hmmsearch_output = f'{dir_folder_pipeline}hmmsearch.out'
         if not os.path.exists( dir_file_flag ) :
-            dir_file_hmmsearch_output = f'{dir_folder_pipeline}hmmsearch.out'
             OS_Run( [ 'hmmsearch', '-o', dir_file_hmmsearch_output, '--acc', '--notextw', '--cpu', f'{n_threads}', '-E', f'{float_search_thres_e_value}', dir_file_query_hmmdb, dir_file_protein_target ], dir_file_stdout = f"{dir_folder_pipeline}hmmsearch.stdout.txt", dir_file_stderr = f"{dir_folder_pipeline}hmmsearch.stderr.txt", return_output = False ) # run hmmsearch
             """ set flag """
             with open( dir_file_flag, 'w' ) as newfile :
                 newfile.write( 'completed\n' )
-
+        Info( "[Task Completion] HMMER search was completed at " + TIME_GET_timestamp( True ) )
+    
     """
     Combine BLASTP and HMMSEARCH outputs 
     """
@@ -330,6 +351,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         # load blastp result
         dict_qacc_to_seq = FASTA_Read( dir_file_protein_target ) # read query protein sequences
         dict_qacc_to_seq = dict( ( header.split( ' ', 1 )[ 0 ], dict_qacc_to_seq[ header ] ) for header in list( dict_qacc_to_seq ) )
+        set_acc_target = set( dict_qacc_to_seq ) # retrieve a set of acc_target
         df_blastp = BLAST_Read( dir_file_blastp_output, dict_qaccver_to_seq = dict_qacc_to_seq ) 
         df_blastp = df_blastp[ [ 'saccver', 'qaccver', 'sstart', 'send', 'qstart', 'qend', 'subject_seq_aligned', 'query_seq_aligned', 'evalue', 'pident' ] ]
         df_blastp.pident = df_blastp.pident / 100
@@ -338,8 +360,9 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
 
         # load hmmer result according to 'flag_use_HMM_search' flag
         if flag_use_HMM_search : 
-            df = HMMER_HMMSEARCH_Read_output( dir_file_hmmsearch_output )
             dict_qacc_to_seq = dict( ( header.split( ' ', 1 )[ 0 ], dict_fasta_protein_query[ header ] ) for header in list( dict_fasta_protein_query ) )
+            # ignore if records from profiles that do not match input query protein sequences 
+            df = PD_Select( HMMER_HMMSEARCH_Read_output( dir_file_hmmsearch_output ), query_accession = set( dict_qacc_to_seq ) ) 
             l_query_alignment = list( ) # replace query consensus sequence with query sequence
             for query_accession, query_alignment, query_start, query_end in df[ [ 'query_accession', 'query_alignment', 'query_start', 'query_end' ] ].values :
                 query_seq = dict_qacc_to_seq[ query_accession ][ query_start - 1 : query_end ] # retrive a subsequence of query sequence
@@ -356,6 +379,8 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
             df_hmmer = df_hmmer[ [ 'query_accession', 'target_accession', 'query_start', 'query_end', 'target_start', 'target_end', 'query_alignment', 'target_alignment', 'conditional_Evalue', 'accuracy' ] ] # subset common columns
             df_hmmer.columns = [ 'query_accession', 'target_accession', 'query_start', 'query_end', 'target_start', 'target_end', 'query_alignment', 'target_alignment', 'e_value', 'identity' ] # rename columns
             df_hmmer[ 'source' ] = 'hmmer' 
+            set_acc_query = set( header.split( ' ', 1 )[ 0 ] for header in dict_fasta_protein_query ) # retrieve a set of acc_query
+            df_hmmer = PD_Select( df_hmmer, query_accession = set_acc_query ) # exclude records with accessions that does not exist in the input query protein sequences
 
         df_matched = pd.concat( [ df_hmmer, df_blastp ], ignore_index = True ) if flag_use_HMM_search else df_blastp
         df_matched.to_csv( dir_file_matched, sep = '\t', index = False )
@@ -363,13 +388,14 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         """ set flag """
         with open( dir_file_flag, 'w' ) as file :
             file.write( f"search results were written at {TIME_GET_timestamp( )}" )
-
+    Info( "[Task Completion] Combining HMMER and BLASTP search results was completed at " + TIME_GET_timestamp( True ) )
+    
     """
     Estimate structural properties of proteins 
     """
     
     """ check flag """
-    dir_file_flag = f"{dir_file_matched}.rsa_estimation_complated.flag"
+    dir_file_flag = f"{dir_folder_pipeline}rsa_estimation_completed.flag"
     if not os.path.exists( dir_file_flag ) :
         # use previously calculated structural properties when the default query proteins were used
         if flag_default_protein_query_was_used :
@@ -392,7 +418,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
-
+    Info( "[Task Completion] Estimation of structural properties of input protein sequences completed at " + TIME_GET_timestamp( True ) )
 
     """
     Calculate B-cell epitope similarity scores based on structural properties of proteins 
@@ -407,6 +433,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
+    Info( "[Task Completion] Prediction of B-cell cross-reactivity was completed at " + TIME_GET_timestamp( True ) )
     
     """ 
     Calculate T-cell epitope similarity scores based on BLOSUM62 scores and predicted binding affinity scores.
@@ -421,6 +448,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
+    Info( "[Task Completion] Prediction of T-cell cross-reactivity was completed at " + TIME_GET_timestamp( True ) )
     
     """
     Further process and export data for visualization using a web application
@@ -431,9 +459,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     if not os.path.exists( dir_file_flag ) :
 
         # combine results of all 'window_size' values
-        df = pd.concat( list( pd.read_csv( dir_file, sep = '\t', low_memory = False ) for dir_file in glob.glob( f"{dir_folder_pipeline}b_cell.subsequence__window_size_*.tsv.gz" ) ), ignore_index = True )
-        df.to_csv( f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", sep = '\t', index = False )
-        del df
+        OS_FILE_Combine_Files_in_order( glob.glob( f"{dir_folder_pipeline}b_cell.subsequence__window_size_*.tsv.gz" ), f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", remove_n_lines = 1, flag_use_header_from_first_file = True )
         # prepare data for web application using the combined subsequence
         # copy data for web application and encode using base64 encoding, and write metadata
         Prepare_data_for_web_application( f"{dir_folder_pipeline}b_cell.subsequence.tsv.gz", f"{dir_folder_pipeline}t_cell.mhc_binding.tsv.gz", dict_cressp_setting )
@@ -441,7 +467,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
-    
+    Info( "[Task Completion] Exporting data for CRESSP web application was completed at " + TIME_GET_timestamp( True ) )
 
 
 def Parse_Structural_Properties( dir_file_df_sp, name_col_for_identifying_protein = 'id_protein' ) :

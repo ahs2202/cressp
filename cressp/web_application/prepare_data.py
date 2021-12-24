@@ -3,6 +3,9 @@ from biobookshelf import *
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
+# define read-only global variables during multiprocessing
+dict_index_blastp_pdb_query, arr_data_blastp_pdb_query, dict_index_blastp_pdb_target, arr_data_blastp_pdb_target = dict( ), dict( ), dict( ), dict( )
+
 # prepare B-cell CrossReactivity data for Web-based visualization application (step1: retrieve aligned positions to structures) # 2020-08-13 22:42:15 
 # retrieve id_structure_alignment and structure_alignment_position for record with structure evidence
 def Retrieve_Alignment( arr_data, query_start, query_end ) :
@@ -38,49 +41,43 @@ def Retrieve_Alignment( arr_data, query_start, query_end ) :
                 dict_query_seq_1_based_to_subject_seq_1_based[ int_pos_query ] = int_pos_subject
         alignment_start, alignment_end, subject_start, subject_end = dict_query_seq_1_based_to_alignment_1_based[ query_start ], dict_query_seq_1_based_to_alignment_1_based[ query_end ], dict_query_seq_1_based_to_subject_seq_1_based[ query_start ], dict_query_seq_1_based_to_subject_seq_1_based[ query_end ]
     return max_overlap, _id_alignment, query_start, query_end, subject_start, subject_end, alignment_start, alignment_end
-
-def Retrieve_Overlapping_Structures( dir_file_input, name_file_b_cell, dir_folder_pipeline ) :
+def Retrieve_Overlapping_Structures( dir_file_input, dir_file_b_cell, name_file_b_cell, dir_folder_pipeline, dir_folder_pipeline_temp ) :
     """ retrieve id_structure of most widely overlapping structures """
+    global dict_index_blastp_pdb_query, arr_data_blastp_pdb_query, dict_index_blastp_pdb_target, arr_data_blastp_pdb_target # use global variables
+    
     dir_folder_pipeline_struc = f'{dir_folder_pipeline}struc/' # a working directory of estimating structural properties
     
-    # read input file
-    df = pd.read_csv( dir_file_input, sep = '\t' )
+    # reetrieve start and end indices of lines
+    int_index_line_start, int_index_line_end = pd.read_csv( dir_file_input, sep = '\t', header = None ).values[ 0 ]
     
-    # load pdb aligned to target proteins
-    df_blastp_pdb_target = pd.read_csv( f'{dir_folder_pipeline_struc}protein_target.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz', sep = '\t' )
-    df_blastp_pdb_target[ 'id_alignment' ] = np.arange( len( df_blastp_pdb_target ) ) # retrieve integer index (id) of each alignment
-    df_blastp_pdb_target = PD_Select( df_blastp_pdb_target, qaccver = set( df.target_accession.values ) ) # subset for the target accession in the current input
+    str_uuid = UUID( ) # set uuid of the current process
     
-    # load pdb aligned to query proteins
-    df_blastp_pdb_query = pd.read_csv( f'{dir_folder_pipeline_struc}protein_query.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz', sep = '\t' )
-    df_blastp_pdb_query[ 'id_alignment' ] = np.arange( len( df_blastp_pdb_query ) ) # retrieve integer index (id) of each alignment
-    df_blastp_pdb_query = PD_Select( df_blastp_pdb_query, qaccver = set( df.query_accession.values ) ) # subset for the query accession in the current input
-    
-   
-    # retrieve dictionary indices of the blastp alignment dataframes for more efficient accessing of rows
-    dict_index_blastp_pdb_query = DF_Build_Index_Using_Dictionary( df_blastp_pdb_query, [ 'qaccver', 'saccver' ] )
-    arr_data_blastp_pdb_query = df_blastp_pdb_query.values
-    dict_index_blastp_pdb_target = DF_Build_Index_Using_Dictionary( df_blastp_pdb_target, [ 'qaccver', 'saccver' ] )
-    arr_data_blastp_pdb_target = df_blastp_pdb_target.values
-
+    ''' initialize the output file '''
+    l_col = [ 'window_size', 'id_alignment', 'source', 'query_accession', 'target_accession', 'e_value', 'identity', 'alignment_start', 'alignment_end', 'query_start', 'query_end', 'target_start', 'target_end', 'query_subsequence', 'target_subsequence', 'score_blosum', 'score_blosum_weighted', 'sum_of_weights', 'score_similarity_acc', 'score_similarity_phi', 'score_similarity_psi', 'score_similarity_ss8', 'n_residues_acc', 'n_residues_phi', 'n_residues_psi', 'n_residues_ss8', 'correl_coeffi_acc', 'correl_p_value_acc', 'correl_coeffi_phi', 'correl_p_value_phi', 'correl_coeffi_psi', 'correl_p_value_psi', 'prop_pdb_evidence_query', 'prop_pdb_evidence_target', 'structure_id_query', 'count_structure_id_query', 'structure_id_target', 'count_structure_id_target', 'most_frequent_ss8_query', 'count_most_frequent_ss8_query', 'most_frequent_ss8_target', 'count_most_frequent_ss8_target', 'query_structure_start', 'query_structure_end', 'structure_id_query_start', 'structure_id_query_end', 'max_overlap_query', 'id_alignment_structure_query', 'alignment_structure_query_start', 'alignment_structure_query_end', 'target_structure_start', 'target_structure_end', 'structure_id_target_start', 'structure_id_target_end', 'max_overlap_target', 'id_alignment_structure_target', 'alignment_structure_target_start', 'alignment_structure_target_end' ]
+    newfile = gzip.open( f"{dir_folder_pipeline_temp}{str_uuid}.{name_file_b_cell}.1.position_aligned_structure_added.tsv.gz", 'wb' ) # open an output file
+    newfile.write( ( '\t'.join( l_col ) + '\n' ).encode( ) )
     
     ''' search maximum overlap with RCSB_PDB structures for each record in the input data '''
-    l_col = [ 'window_size', 'id_alignment', 'source', 'query_accession', 'target_accession', 'e_value', 'identity', 'alignment_start', 'alignment_end', 'query_start', 'query_end', 'target_start', 'target_end', 'query_subsequence', 'target_subsequence', 'score_blosum', 'score_blosum_weighted', 'sum_of_weights', 'score_similarity_acc', 'score_similarity_phi', 'score_similarity_psi', 'score_similarity_ss8', 'n_residues_acc', 'n_residues_phi', 'n_residues_psi', 'n_residues_ss8', 'correl_coeffi_acc', 'correl_p_value_acc', 'correl_coeffi_phi', 'correl_p_value_phi', 'correl_coeffi_psi', 'correl_p_value_psi', 'prop_pdb_evidence_query', 'prop_pdb_evidence_target', 'structure_id_query', 'count_structure_id_query', 'structure_id_target', 'count_structure_id_target', 'most_frequent_ss8_query', 'count_most_frequent_ss8_query', 'most_frequent_ss8_target', 'count_most_frequent_ss8_target' ] 
-    l_l_value = list( )
-    for window_size, id_alignment, source, query_accession, target_accession, e_value, identity, alignment_start, alignment_end, query_start, query_end, target_start, target_end, query_subsequence, target_subsequence, score_blosum, score_blosum_weighted, sum_of_weights, score_similarity_acc, score_similarity_phi, score_similarity_psi, score_similarity_ss8, n_residues_acc, n_residues_phi, n_residues_psi, n_residues_ss8, correl_coeffi_acc, correl_p_value_acc, correl_coeffi_phi, correl_p_value_phi, correl_coeffi_psi, correl_p_value_psi, prop_pdb_evidence_query, prop_pdb_evidence_target, structure_id_query, count_structure_id_query, structure_id_target, count_structure_id_target, most_frequent_ss8_query, count_most_frequent_ss8_query, most_frequent_ss8_target, count_most_frequent_ss8_target,  in df[ l_col ].values :
-        max_overlap_query, id_alignment_structure_query, query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, alignment_structure_query_start, alignment_structure_query_end = Retrieve_Alignment( arr_data_blastp_pdb_query[ dict_index_blastp_pdb_query[ query_accession, structure_id_query ] ], query_start, query_end ) if isinstance( structure_id_query, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
-        max_overlap_target, id_alignment_structure_target, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, alignment_structure_target_start, alignment_structure_target_end = Retrieve_Alignment( arr_data_blastp_pdb_target[ dict_index_blastp_pdb_target[ target_accession, structure_id_target ] ], target_start, target_end ) if isinstance( structure_id_target, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
-        l_l_value.append( [ query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, max_overlap_query, id_alignment_structure_query, alignment_structure_query_start, alignment_structure_query_end, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, max_overlap_target, id_alignment_structure_target, alignment_structure_target_start, alignment_structure_target_end ] )
-    df = df.join( pd.DataFrame( l_l_value, columns = [ 'query_structure_start', 'query_structure_end', 'structure_id_query_start', 'structure_id_query_end', 'max_overlap_query', 'id_alignment_structure_query', 'alignment_structure_query_start', 'alignment_structure_query_end', 'target_structure_start', 'target_structure_end', 'structure_id_target_start', 'structure_id_target_end', 'max_overlap_target', 'id_alignment_structure_target', 'alignment_structure_target_start', 'alignment_structure_target_end' ] ) )
-    df.to_csv( f"{dir_file_input}_output.tsv.gz", sep = '\t', index = False )
-    
-def Retrieve_Overlapping_Structures__PostProcessing( str_uuid, dir_temp, name_file_b_cell, dir_folder_pipeline ) :
-    dir_folder_pipeline_web = f'{dir_folder_pipeline}web_application/' # a working directory for exporting data for web applications
-    
-    l_dir_file = glob.glob( f"{dir_temp}{str_uuid}*_output.tsv.gz" ) # retrieve list of output files
-    dir_file_combined = f'{dir_folder_pipeline_web}{name_file_b_cell}.1.position_aligned_structure_added.tsv.gz'
-    OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_combined, overwrite_existing_file = True, flag_use_header_from_first_file = True, remove_n_lines = 1 )
-
+    index_line = -1
+    with gzip.open( dir_file_b_cell, 'rb' ) as file :
+        file.readline( ) # read header
+        while True :
+            line = file.readline( )
+            if len( line ) == 0 :
+                break
+            index_line += 1 # increase line index number by 1
+            if index_line < int_index_line_start : # read until the target region is reached
+                continue
+            elif index_line >= int_index_line_end : # stop reading if processing of the target region is completed
+                break
+            ''' parse a single record '''
+            line_without_newline = line.decode( ).strip( ) # retrieve line without a newline character
+            window_size, id_alignment, source, query_accession, target_accession, e_value, identity, alignment_start, alignment_end, query_start, query_end, target_start, target_end, query_subsequence, target_subsequence, score_blosum, score_blosum_weighted, sum_of_weights, score_similarity_acc, score_similarity_phi, score_similarity_psi, score_similarity_ss8, n_residues_acc, n_residues_phi, n_residues_psi, n_residues_ss8, correl_coeffi_acc, correl_p_value_acc, correl_coeffi_phi, correl_p_value_phi, correl_coeffi_psi, correl_p_value_psi, prop_pdb_evidence_query, prop_pdb_evidence_target, structure_id_query, count_structure_id_query, structure_id_target, count_structure_id_target, most_frequent_ss8_query, count_most_frequent_ss8_query, most_frequent_ss8_target, count_most_frequent_ss8_target = Parse_Line( line_without_newline, [ int, int, str, str, str, float, float, int, int, int, int, int, int, str, str, int, float, float, float, float, float, float, int, int, int, int, float, float, float, float, float, float, float, float, str, int, str, int, str, int, str, int ], delimiter = '\t' )
+            ''' search maximum overlap with RCSB_PDB structures for each record in the input data '''
+            max_overlap_query, id_alignment_structure_query, query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, alignment_structure_query_start, alignment_structure_query_end = Retrieve_Alignment( arr_data_blastp_pdb_query[ dict_index_blastp_pdb_query[ query_accession, structure_id_query ] ], query_start, query_end ) if isinstance( structure_id_query, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
+            max_overlap_target, id_alignment_structure_target, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, alignment_structure_target_start, alignment_structure_target_end = Retrieve_Alignment( arr_data_blastp_pdb_target[ dict_index_blastp_pdb_target[ target_accession, structure_id_target ] ], target_start, target_end ) if isinstance( structure_id_target, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
+            ''' write processed result '''
+            newfile.write( ( line_without_newline + '\t' + '\t'.join( list( map( str, [ query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, max_overlap_query, id_alignment_structure_query, alignment_structure_query_start, alignment_structure_query_end, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, max_overlap_target, id_alignment_structure_target, alignment_structure_target_start, alignment_structure_target_end ] ) ) ) + '\n' ).encode( ) )
 def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cressp_setting ) :
     """ Prepare_data_for_web_application """
     
@@ -114,9 +111,36 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     Process B-cell data 
     """
     """ add full-length alignments to RCSB_PDB structures """
-    df = pd.read_csv( dir_file_b_cell, sep = '\t', low_memory = False )
-    Multiprocessing( df, Function = Retrieve_Overlapping_Structures, n_threads = n_threads, Function_PostProcessing = Retrieve_Overlapping_Structures__PostProcessing, dir_temp = dir_folder_pipeline_temp, global_arguments = [ name_file_b_cell, dir_folder_pipeline ] )
+    # update global read-only variables
+    global dict_index_blastp_pdb_query, arr_data_blastp_pdb_query, dict_index_blastp_pdb_target, arr_data_blastp_pdb_target # use global variables
+    df = pd.read_csv( dir_file_b_cell, sep = '\t', usecols = [ 'target_accession', 'query_accession' ] ) # retrieve target & query accessions
+    
+    # load pdb aligned to target proteins
+    df_blastp_pdb_target = pd.read_csv( f'{dir_folder_pipeline_struc}protein_target.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz', sep = '\t' )
+    df_blastp_pdb_target[ 'id_alignment' ] = np.arange( len( df_blastp_pdb_target ) ) # retrieve integer index (id) of each alignment
+    df_blastp_pdb_target = PD_Select( df_blastp_pdb_target, qaccver = set( df.target_accession.values ) ) # subset for the target accession in the current input
+    
+    # load pdb aligned to query proteins
+    df_blastp_pdb_query = pd.read_csv( f'{dir_folder_pipeline_struc}protein_query.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz', sep = '\t' )
+    df_blastp_pdb_query[ 'id_alignment' ] = np.arange( len( df_blastp_pdb_query ) ) # retrieve integer index (id) of each alignment
+    df_blastp_pdb_query = PD_Select( df_blastp_pdb_query, qaccver = set( df.query_accession.values ) ) # subset for the query accession in the current input
+   
+    # retrieve dictionary indices of the blastp alignment dataframes for more efficient accessing of rows
+    dict_index_blastp_pdb_query = DF_Build_Index_Using_Dictionary( df_blastp_pdb_query, [ 'qaccver', 'saccver' ] )
+    arr_data_blastp_pdb_query = df_blastp_pdb_query.values
+    dict_index_blastp_pdb_target = DF_Build_Index_Using_Dictionary( df_blastp_pdb_target, [ 'qaccver', 'saccver' ] )
+    arr_data_blastp_pdb_target = df_blastp_pdb_target.values
+    
+    # build bookmarks for simultaneous access of the file
+    int_n_records = len( df )
+    l = list( range( 0, int_n_records, int( np.ceil( int_n_records / n_threads ) ) ) ) + [ int_n_records ] # list of indices (for building bookmarks)
+    l_bookmarks = list( [ l[ i ], l[ i + 1 ] ] for i in range( len( l ) - 1 ) ) # retrieve list of bookmarks
     del df
+    
+    Multiprocessing( l_bookmarks, Function = Retrieve_Overlapping_Structures, n_threads = len( l_bookmarks ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_file_b_cell, name_file_b_cell, dir_folder_pipeline, dir_folder_pipeline_temp ] )
+    # combine output files
+    OS_FILE_Combine_Files_in_order( glob.glob( f"{dir_folder_pipeline_temp}*.{name_file_b_cell}.1.position_aligned_structure_added.tsv.gz" ), f'{dir_folder_pipeline_web}{name_file_b_cell}.1.position_aligned_structure_added.tsv.gz', overwrite_existing_file = True, flag_use_header_from_first_file = True, remove_n_lines = 1 )
+
 
     """ Modify coordinates of RCSB_PDB structures """
     # modify aligned coordinates of PDB structures so that it accurately match that in 'label_seq_id' (PDB sequence is often fragment of its parent proteins) 
@@ -374,9 +398,11 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
 
     df_fasta_acc_query = pd.read_csv( f'{dir_folder_pipeline}protein_query.tsv.gz', sep = '\t' ) # load structural property data for target sequences 
     df_fasta_acc_target = pd.read_csv( f'{dir_folder_pipeline}protein_target.tsv.gz', sep = '\t' ) # load structural property data for target sequences 
-
-    df_fasta_acc_query_subset = PD_Subset( df_fasta_acc_query.set_index( str_col_id ), subset = df_acc_query.value.values ).reset_index( )
-    df_fasta_acc_target_subset = PD_Subset( df_fasta_acc_target.set_index( str_col_id ), subset = df_acc_target.value.values ).reset_index( )
+    
+    # subset structural data and order records in the same order as 'df_acc_query' or 'df_acc_target'
+    df_fasta_acc_query_subset = df_fasta_acc_query.set_index( str_col_id ).loc[ df_acc_query.value.values ].reset_index( )
+    df_fasta_acc_target_subset = df_fasta_acc_target.set_index( str_col_id ).loc[ df_acc_target.value.values ].reset_index( )
+    
     # parse structural data of query sequences
     df_fasta_acc_query_subset.set_index( str_col_id, inplace = True )
     df_fasta_acc_query_subset[ 'rsa___ascii_encoding_1_character_from_33_to_126__from_0_to_1__for_web_application' ] = pd.Series( ASCII_Encode( ASCII_Decode( df_fasta_acc_query_subset[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa ), ** dict_kw_rsa_for_web_application ) )

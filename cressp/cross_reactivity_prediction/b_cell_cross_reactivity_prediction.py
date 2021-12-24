@@ -251,7 +251,7 @@ def BCell_Combine_result_files_for_each_window_size( dir_file_input, dir_folder_
         l_dir_file = glob.glob( f"{dir_folder_pipeline_temp}*_window_size_{int_window_size}.tsv.gz" ) # retrieve list of output files to combine into a single output file
         dir_file_output_combining = f'{dir_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.combining.tsv.gz'
         dir_file_output_combining_completed = f'{dir_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.tsv.gz'
-        OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, flag_use_header_from_first_file = True, remove_n_lines = 1 )
+        OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, flag_use_header_from_first_file = True, remove_n_lines = 1, delete_input_files = True )
         print( f"combining output files for window size {int_window_size} is completed" )
         os.rename( dir_file_output_combining, dir_file_output_combining_completed ) # rename the file once completed
         
