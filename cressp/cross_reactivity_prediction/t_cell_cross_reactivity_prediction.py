@@ -86,7 +86,7 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
 
 
     """ 
-    Calculate T-cell epitope similarity
+    Predict MHC binding affinity
     """
 
     """ check flag """
@@ -103,6 +103,7 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
         predictor = Class1PresentationPredictor.load( ) # load MHCflurry predictor for benchmarking
 
         ''' retrieve MHC-I alleles with allele frequency larger then the given threshold in at least one population '''
+        PKG.Download_Data( "data/mhc_population_allele_frequency.tsv.gz", dir_remote, name_package ) # download data
         df_mhc_af = pd.read_csv( f"{dir_folder_cressp}data/mhc_population_allele_frequency.tsv.gz", sep = '\t', index_col = [ 0, 1 ] )
         l_mhc_i_allele = PD_Threshold( ( df_mhc_af.loc[ 'I' ] > float_thres_min_mhc_allele_frequency ).sum( axis = 1 ), a = 0 ).index.values # retrieve mhc_i_alleles with allele frequency > 'float_thres_min_mhc_allele_frequency' in at least one population
         l_mhc_i_allele = list( set( l_mhc_i_allele ).intersection( predictor.supported_alleles ) ) # retrive valid alleles for MHCflurry
@@ -148,6 +149,7 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
+<<<<<<< HEAD
         
         
     
@@ -213,4 +215,6 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
         """ set flag """
         with open( dir_file_flag, 'w' ) as newfile :
             newfile.write( 'completed\n' )
+=======
+>>>>>>> 820f37a43d05e6422c01d74aba0238d85432e749
             
