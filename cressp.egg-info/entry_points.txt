@@ -1,0 +1,3 @@
+[console_scripts]
+cressp = cressp.__main__:cressp
+

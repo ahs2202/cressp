@@ -95,10 +95,18 @@ def Prepare_data_for_web_application( dir_file_b_cell, dir_file_t_cell, dict_cre
     dir_folder_pipeline_web = dict_cressp_setting[ 'dir_folder_pipeline_web' ]
     dir_folder_pipeline_struc = dict_cressp_setting[ 'dir_folder_pipeline_struc' ]
     dir_folder_web = dict_cressp_setting[ 'dir_folder_web' ]
+    flag_deduplicate_based_on_aligned_subsequences_for_visualization = dict_cressp_setting[ 'flag_deduplicate_based_on_aligned_subsequences_for_visualization' ]
     
     # create folders if they do not exist
     for dir_folder in [ dir_folder_pipeline_web, dir_folder_pipeline_struc, dir_folder_web ] :
         os.makedirs( dir_folder_pipeline_web, exist_ok = True )
+    
+    ''' deduplicate records based on aligned subsequences '''
+    if flag_deduplicate_based_on_aligned_subsequences_for_visualization :
+        ''' deduplicate b-cell records '''
+        dir_file_b_cell_deduplicated = f"{dir_file_b_cell.rsplit( '.tsv.gz', 1 )[ 0 ]}.deduplicated_by_subsequences.tsv.gz" # define an output file
+        DF_Deduplicate_without_loading_in_memory( dir_file_b_cell, dir_file_b_cell_deduplicated, [ 'query_subsequence', 'target_subsequence' ], flag_header_is_present = True, str_delimiter = '\t' )
+        dir_file_b_cell = dir_file_b_cell_deduplicated # use the deduplicated b-cell record file 
     
     """ Retrieve file names """
     name_file_b_cell = dir_file_b_cell.rsplit( '/', 1 )[ 1 ].rsplit( '.tsv', 1 )[ 0 ] # retrieve name of the input file of b-cell

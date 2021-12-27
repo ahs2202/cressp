@@ -132,7 +132,7 @@ def __Transfer_DSSP_Structural_Property_Through_BLAST__( dir_file_input, dir_fol
         # encode structural properties using ASCII characters and save it as a tabular data
         # l_col = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ]
         
-        newfile_df_acc.write( ( '\t'.join( [ qaccver, seq_query, ASCII_Encode( [ arr_acc_query ], ** dict_kw_rsa )[ 0 ], ASCII_Encode( [ arr_phi_query ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ arr_psi_query ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ arr_ss8 ], ** dict_kw_ss8 )[ 0 ], Encode_List_of_Strings( arr_saccver ) ] ) + '\n' ).encode( ) ) # encode transferred and combined structural properties into ASCII strings using ASCII encoding
+        __Encode_and_Write_Structural_Properties__( newfile_df_acc, { 'id_protein' : qaccver, 'seq' : seq_query, 'acc' : arr_acc_query, 'phi' : arr_phi_query, 'psi' : arr_psi_query, 'ss8' : arr_ss8, 'structure_id' : arr_saccver } ) # encode transferred and combined structural properties into ASCII strings using ASCII encoding
     
     newfile_df_acc.close( ) # close file
 def __Iterate_and_Parse_Structural_Properties__( dir_file_sp, int_datatype = None ) :
@@ -221,10 +221,11 @@ def __Encode_and_Write_Structural_Properties__( file_handle, dict_record ) :
         else : 
             return e
     
-    # l_col = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB', 'structure_id___redundancy_reduced' ]
+    # l_col = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB', 'structure_id___redundancy_reduced' ] # when datatype_acc is present
+    # l_col = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ] # when datatype_acc is not present
 
     ''' encode structural properties '''
-    l_data = [ dict_record[ 'id_protein' ], dict_record[ 'seq' ], ASCII_Encode( [ dict_record[ 'acc' ] ], ** dict_kw_rsa )[ 0 ], ASCII_Encode( [ dict_record[ 'phi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'psi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'ss8' ] ], ** dict_kw_ss8 )[ 0 ], ASCII_Encode( [ dict_record[ 'datatype_acc' ] ], ** dict_kw_datatype )[ 0 ], Encode_List_of_Strings( dict_record[ 'structure_id' ] ) if not isinstance( dict_record[ 'structure_id' ], float ) else '' ]
+    l_data = [ dict_record[ 'id_protein' ], dict_record[ 'seq' ], ASCII_Encode( [ dict_record[ 'acc' ] ], ** dict_kw_rsa )[ 0 ], ASCII_Encode( [ dict_record[ 'phi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'psi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'ss8' ] ], ** dict_kw_ss8 )[ 0 ] ] + ( [ ASCII_Encode( [ dict_record[ 'datatype_acc' ] ], ** dict_kw_datatype )[ 0 ] ] if 'datatype_acc' in dict_record else [ ] ) + [ Encode_List_of_Strings( dict_record[ 'structure_id' ] ) if not isinstance( dict_record[ 'structure_id' ], float ) else '' ] # if 'datatype_acc' column does not exist, does not include it in the output
     file_handle.write( ( '\t'.join( list( map( __add_quotation__, l_data ) ) ) + '\n' ).encode( ) ) # write a record
 def __Parse_Structural_Properties__( dir_file_sp, int_datatype ) :
     """

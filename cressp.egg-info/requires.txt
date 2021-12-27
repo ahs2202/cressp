@@ -1,0 +1,3 @@
+tensorflow>=2.3.0
+biobookshelf>=0.1.25
+mhcflurry>=2.0.2

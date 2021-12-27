@@ -3,6 +3,9 @@ from biobookshelf import *
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
+# define global read-only variables
+dict_acc_to_arr_acc_query, dict_acc_to_arr_datatype_acc_query, dict_acc_to_arr_phi_query, dict_acc_to_arr_psi_query, dict_acc_to_arr_ss8_query, dict_acc_to_arr_structure_id_query, dict_acc_to_arr_acc_target, dict_acc_to_arr_datatype_acc_target, dict_acc_to_arr_phi_target, dict_acc_to_arr_psi_target, dict_acc_to_arr_ss8_target, dict_acc_to_arr_structure_id_target = [ dict( ) ] * 12
+
 def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, float_thres_avg_score_blosum_weighted, float_thres_avg_score_blosum, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ) :
     """
     Calculate_Similarity_Scores_in_Aligned_Sequences
@@ -16,50 +19,6 @@ def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, floa
 
     # read input alignment between query and target proteins
     df_matched = pd.read_csv( dir_file_input, sep = '\t' )
-    
-    # setting for decoding structural properties
-    dict_kw_rsa = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = 0, value_max = 1 )
-    dict_kw_torsion_angle = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = -180, value_max = 180 )
-    dict_kw_ss8 = dict( ascii_min = 33, ascii_max = 41, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 8 )
-    dict_kw_datatype = dict( ascii_min = 33, ascii_max = 36, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 3 )
-
-    # load structural property data for query protein sequences
-    df_protein_query = PD_Select( pd.read_csv( f'{dir_folder_pipeline}protein_query.tsv.gz', sep = '\t' ), id_protein = df_matched.query_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
-    dict_acc_to_arr_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa )
-    dict_acc_to_arr_datatype_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
-    dict_acc_to_arr_phi_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
-    dict_acc_to_arr_psi_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
-    dict_acc_to_arr_ss8_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].dropna( ).to_dict( ), ** dict_kw_ss8 )
-    dict_fasta = df_protein_query.set_index( 'id_protein' )[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
-    dict_acc_to_arr_structure_id_query = dict( ( acc, Decode_List_of_Strings( dict_fasta[ acc ] ) ) for acc in dict_fasta )
-    del dict_fasta, df_protein_query
-    
-    # load structural property data for target protein sequences
-    if not flag_only_use_structural_properties_of_query_proteins :
-        df_protein_target = PD_Select( pd.read_csv( f'{dir_folder_pipeline}protein_target.tsv.gz', sep = '\t' ), id_protein = df_matched.target_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
-        dict_acc_to_arr_acc_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa )
-        dict_acc_to_arr_datatype_acc_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
-        dict_acc_to_arr_phi_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
-        dict_acc_to_arr_psi_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
-        dict_acc_to_arr_ss8_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].dropna( ).to_dict( ), ** dict_kw_ss8 )
-        dict_fasta = df_protein_target.set_index( 'id_protein' )[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
-        dict_acc_to_arr_structure_id_target = dict( ( acc, Decode_List_of_Strings( dict_fasta[ acc ] ) ) for acc in dict_fasta )
-        del dict_fasta, df_protein_target
-    else :
-        ''' retrieve target protein sequence exist in the alignments '''
-        set_id_protein_target = set( df_matched.target_accession.unique( ) )
-        dict_fasta_protein_target = FASTA_Read( f"{dir_folder_pipeline}protein_target.fasta" )
-        dict_fasta_protein_target = dict( ( h.split( ' ', 1 )[ 0 ], dict_fasta_protein_target[ h ] ) for h in dict_fasta_protein_target if h.split( ' ', 1 )[ 0 ] in set_id_protein_target ) # retrieve sequence_id by spliting the header at the first space (to makes sequence_id consistent with that used with blastp) # subset protein sequences with id_proteins in the alignments
-        dict_arr_float_empty = dict( ( h, np.full( len( dict_fasta_protein_target[ h ] ), np.nan ) ) for h in dict_fasta_protein_target )
-        
-        ''' initialize structural properties of target proteins with empty arrays '''
-        dict_acc_to_arr_acc_target = deepcopy( dict_arr_float_empty )
-        dict_acc_to_arr_datatype_acc_target = deepcopy( dict_arr_float_empty )
-        dict_acc_to_arr_phi_target = deepcopy( dict_arr_float_empty )
-        dict_acc_to_arr_psi_target = deepcopy( dict_arr_float_empty )
-        dict_acc_to_arr_ss8_target = deepcopy( dict_arr_float_empty )
-        dict_acc_to_arr_structure_id_target = dict( ( h, np.full( len( dict_fasta_protein_target[ h ] ), np.nan, dtype = object ) ) for h in dict_fasta_protein_target )
-        del set_id_protein_target, dict_fasta_protein_target, dict_arr_float_empty
 
     # prepare Blosum62 score matrix including all non-conventional annotations of amino acids # 2020-10-29 02:15:32 
     # read dict_blosum62 from the tsv file
@@ -241,7 +200,6 @@ def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, floa
                 print( f"error number {n_errors}", traceback.format_exc( ) )
         file_output.close( ) # close output file
     return uuid_process # return the UUID of the current process 
-
 def BCell_Combine_result_files_for_each_window_size( dir_file_input, dir_folder_pipeline, dir_folder_pipeline_temp ) :
     """
     combine result files for each window_size
@@ -254,9 +212,7 @@ def BCell_Combine_result_files_for_each_window_size( dir_file_input, dir_folder_
         OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, flag_use_header_from_first_file = True, remove_n_lines = 1, delete_input_files = True )
         print( f"combining output files for window size {int_window_size} is completed" )
         os.rename( dir_file_output_combining, dir_file_output_combining_completed ) # rename the file once completed
-        
-        
-def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipeline_temp = None, n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 1e-20, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0, float_thres_rsa_correlation = 0 ) :
+def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipeline_temp = None, n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0, float_thres_rsa_correlation = 0 ) :
     
     """
     Package settings
@@ -271,15 +227,61 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
     """
     dir_file_matched = f'{dir_folder_pipeline}matched.tsv.gz'
     df_matched = pd.read_csv( dir_file_matched, sep = '\t' ) # read alignments between query and target protein sequences
-    df = df_matched
-    df.index.name = 'id_alignment' # retrieve id_alignment (index of df_matched) during retrieving subsequences
-    df.reset_index( drop = False, inplace = True ) # add id_alignment column to to the dataframe
-    print( f"number of records: {len( df )}" )
-    df = df[ df.e_value <= float_thres_e_value ] # drop entries with too low global similarity
-    print( f"number of records after filtering: {len( df )}" )
+    df_matched.index.name = 'id_alignment' # retrieve id_alignment (index of df_matched) during retrieving subsequences
+    df_matched.reset_index( drop = False, inplace = True ) # add id_alignment column to to the dataframe
+    print( f"number of records: {len( df_matched )}" )
+    df_matched = df_matched[ df_matched.e_value <= float_thres_e_value ] # drop entries with too low global similarity
+#     print( f"number of records after filtering: {len( df_matched )}" )
+    
+    # update global variables
+    global dict_acc_to_arr_acc_query, dict_acc_to_arr_datatype_acc_query, dict_acc_to_arr_phi_query, dict_acc_to_arr_psi_query, dict_acc_to_arr_ss8_query, dict_acc_to_arr_structure_id_query, dict_acc_to_arr_acc_target, dict_acc_to_arr_datatype_acc_target, dict_acc_to_arr_phi_target, dict_acc_to_arr_psi_target, dict_acc_to_arr_ss8_target, dict_acc_to_arr_structure_id_target
 
+    # setting for decoding structural properties
+    dict_kw_rsa = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = 0, value_max = 1 )
+    dict_kw_torsion_angle = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = -180, value_max = 180 )
+    dict_kw_ss8 = dict( ascii_min = 33, ascii_max = 41, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 8 )
+    dict_kw_datatype = dict( ascii_min = 33, ascii_max = 36, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 3 )
+
+    # load structural property data for query protein sequences
+    df_protein_query = PD_Select( pd.read_csv( f'{dir_folder_pipeline}protein_query.tsv.gz', sep = '\t' ), id_protein = df_matched.query_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
+    dict_acc_to_arr_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa )
+    dict_acc_to_arr_datatype_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
+    dict_acc_to_arr_phi_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
+    dict_acc_to_arr_psi_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
+    dict_acc_to_arr_ss8_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].dropna( ).to_dict( ), ** dict_kw_ss8 )
+    dict_fasta = df_protein_query.set_index( 'id_protein' )[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
+    dict_acc_to_arr_structure_id_query = dict( ( acc, Decode_List_of_Strings( dict_fasta[ acc ] ) ) for acc in dict_fasta )
+    del dict_fasta, df_protein_query
+    
+    # load structural property data for target protein sequences
+    if not flag_only_use_structural_properties_of_query_proteins :
+        df_protein_target = PD_Select( pd.read_csv( f'{dir_folder_pipeline}protein_target.tsv.gz', sep = '\t' ), id_protein = df_matched.target_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
+        dict_acc_to_arr_acc_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa )
+        dict_acc_to_arr_datatype_acc_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
+        dict_acc_to_arr_phi_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
+        dict_acc_to_arr_psi_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
+        dict_acc_to_arr_ss8_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].dropna( ).to_dict( ), ** dict_kw_ss8 )
+        dict_fasta = df_protein_target.set_index( 'id_protein' )[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
+        dict_acc_to_arr_structure_id_target = dict( ( acc, Decode_List_of_Strings( dict_fasta[ acc ] ) ) for acc in dict_fasta )
+        del dict_fasta, df_protein_target
+    else :
+        ''' retrieve target protein sequence exist in the alignments '''
+        set_id_protein_target = set( df_matched.target_accession.unique( ) )
+        dict_fasta_protein_target = FASTA_Read( f"{dir_folder_pipeline}protein_target.fasta" )
+        dict_fasta_protein_target = dict( ( h.split( ' ', 1 )[ 0 ], dict_fasta_protein_target[ h ] ) for h in dict_fasta_protein_target if h.split( ' ', 1 )[ 0 ] in set_id_protein_target ) # retrieve sequence_id by spliting the header at the first space (to makes sequence_id consistent with that used with blastp) # subset protein sequences with id_proteins in the alignments
+        dict_arr_float_empty = dict( ( h, np.full( len( dict_fasta_protein_target[ h ] ), np.nan ) ) for h in dict_fasta_protein_target )
+        
+        ''' initialize structural properties of target proteins with empty arrays '''
+        dict_acc_to_arr_acc_target = deepcopy( dict_arr_float_empty )
+        dict_acc_to_arr_datatype_acc_target = deepcopy( dict_arr_float_empty )
+        dict_acc_to_arr_phi_target = deepcopy( dict_arr_float_empty )
+        dict_acc_to_arr_psi_target = deepcopy( dict_arr_float_empty )
+        dict_acc_to_arr_ss8_target = deepcopy( dict_arr_float_empty )
+        dict_acc_to_arr_structure_id_target = dict( ( h, np.full( len( dict_fasta_protein_target[ h ] ), np.nan, dtype = object ) ) for h in dict_fasta_protein_target )
+        del set_id_protein_target, dict_fasta_protein_target, dict_arr_float_empty
+    
     """ predict b-cell cross-reactivity """
-    l_uuid_process = Multiprocessing( df, BCell_Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
+    l_uuid_process = Multiprocessing( df_matched, BCell_Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
     # combine output files for each window size
     Multiprocessing( l_window_size, BCell_Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size
     

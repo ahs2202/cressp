@@ -24,7 +24,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'tensorflow>=2.3.0',
-        'biobookshelf>=0.1.18',
+        'biobookshelf>=0.1.25',
         'mhcflurry>=2.0.2',
     ],
     entry_points={

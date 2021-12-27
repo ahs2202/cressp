@@ -30,7 +30,7 @@ Info = multiprocessing.get_logger( ).info
 #     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
 #         dict_blosum62[ aa_0, aa_1 ] = score
 
-def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 1e-20, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5, float_thres_binding_affinities_in_nM = 500, flag_replace_unconventional_acid_code = False, flag_use_all_gpu_devices = False ) :
+def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5, float_thres_binding_affinities_in_nM = 500, flag_replace_unconventional_acid_code = False, flag_use_all_gpu_devices = False, flag_deduplicate_based_on_aligned_subsequences_for_visualization = False ) :
     """
     The main function of Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
     
@@ -46,7 +46,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
             
     l_window_size = [ 30 ] : list of window sizes for searching cross-reactive epitopes from the alignments between query and target proteins.
             
-    float_thres_e_value = 1e-20 : (Default: 1e-20) threshold for the global alignment e-value.
+    float_thres_e_value = 30 : (Default: 30, meaning no filtering) threshold for the global alignment e-value.
             
     flag_use_HMM_search = False : (Default: False) Set this flag to perform HMM search in addition to BLASTP search. HMM profile search is performed with HMMER3. The search usually takes several hours for metagenome-assembled genomes.
             
@@ -69,6 +69,8 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     float_thres_min_mhc_allele_frequency = 0.5 : (Default: 0.5) a threshold for filtering out MHC alleles with low allele frequencies. MHC alleles with allele frequency above the threshold for at least one population will be used for cross-reactive T-cell epitope prediction
             
     float_thres_binding_affinities_in_nM = 500 : (Default: 500) a threshold predicted IC50 values for filtering predicted T-cell cross-reactive epitopes. A pair of peptides whose geometric average of predicted binding affinities (IC50) values above this threshold will be removed.
+    
+    flag_deduplicate_based_on_aligned_subsequences_for_visualization = False : (Default: False) perform the deduplication step for removing redundant predicted cross-reactive epitopes based on aligned subsequences
             
     """
     
@@ -86,7 +88,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     # define logging levels
     logger = multiprocessing.log_to_stderr( )
     logger.setLevel( logging.INFO )
-    Info( 'CRESSP: comparative analysis of two sets of proteome for searching potentially cross-reactive B-cell and T-cell epitopes' )
+    Info( 'CRESSP: comparative analysis of two sets of proteomes for searching potentially cross-reactive B-cell and T-cell epitopes' )
     Info( '[Pipeline Start] Pipeline Started at ' + TIME_GET_timestamp( True ) )
     
     # fixed arguments
@@ -108,7 +110,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         parser.add_argument( "-o", "--dir_folder_output", help = "(Default: a subdirectory 'cressp_out/' of the current directory) an output directory", default = "default" )
         parser.add_argument( "-c", "--cpu", help = "(Default: 1) Number of logical CPUs (threads) to use in the current compute node.", default = '1' )
         parser.add_argument( "-w", "--window_size", help = "(Default: 30) list of window sizes separated by comma. Example: 15,30,45", default = "30" )
-        parser.add_argument( "-e", "--float_thres_e_value", help = "(Default: 1e-20) threshold for the global alignment e-value in a scientific notation Example: 1e-3", default = "1e-20" )
+        parser.add_argument( "-e", "--float_thres_e_value", help = "(Default: 30, meaning no filtering) threshold for the global alignment e-value in a scientific notation Example: 1e-3", default = "30" )
         parser.add_argument( "-H", "--flag_use_HMM_search", help = "(Default: False) Set this flag to perform HMM search in addition to BLASTP search. HMM profile search is performed with HMMER3. The search usually takes several hours for metagenome-assembled genomes", action = 'store_true' )
         parser.add_argument( "-d", "--dir_file_query_hmmdb", help = "(Default: a HMM profile database of 1012 human proteins searched against UniProt Pan Proteomes. These proteins consist of experimentally validated human autoantigens) a file containing HMM DB of query proteins aligned against pan-proteomes", default = "human" )
         parser.add_argument( "-R", "--flag_use_rcsb_pdb_only", help = "(Default: False) When calculating consensus structural properties of input proteins, do not use homology-based modeled structures from SWISS-MODEL repositories and only use experimental protein structures from RCSB PDB", action = 'store_true' )
@@ -123,6 +125,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         parser.add_argument( "-a", "--float_thres_binding_affinities_in_nM", help = "(Default: 500) a threshold predicted IC50 values for filtering predicted T-cell cross-reactive epitopes. A pair of peptides whose geometric average of predicted binding affinities (IC50) values above this threshold will be removed.", default = '500' )
         parser.add_argument( "-U", "--flag_replace_unconventional_acid_code", help = "(Default: False) If this flag is set, unconventional amino acids in the input protein sequences will be replaced with chemically similar amino acid. Specifically, Selenocysteine (U) to Cysteine (C), Pyrrolysine (O) to Tyrosine (Y)", action = 'store_true' )
         parser.add_argument( "-G", "--flag_use_all_gpu_devices", help = "(Default: False) Use all available GPU devices during prediction of RSA values. When this flag is set to True, the RSA prediction might be completed faster, but all GPU memories will be occupied by Tensorflow", action = 'store_true' )
+        parser.add_argument( "-D", "--flag_deduplicate_based_on_aligned_subsequences_for_visualization", help = "(Default: False) perform the deduplication step for removing redundant predicted cross-reactive epitopes based on aligned subsequences", action = 'store_true' )
         args = parser.parse_args( )
         if args.dir_file_protein_target is None :
             Info( '[Error] Required argument(s) is missing. to view help message, use -h or --help flag' )
@@ -146,6 +149,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         float_thres_binding_affinities_in_nM = float( args.float_thres_binding_affinities_in_nM )
 
         # parse directory arguments
+#         dir_file_protein_target_representative
         dir_file_protein_target = args.dir_file_protein_target
         dir_file_protein_query = args.dir_file_protein_query
         dir_folder_output = args.dir_folder_output
@@ -264,6 +268,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         'flag_use_HMM_search' : flag_use_HMM_search,
         'flag_use_rcsb_pdb_only' : flag_use_rcsb_pdb_only,
         'flag_only_use_structural_properties_of_query_proteins' : flag_only_use_structural_properties_of_query_proteins,
+        'flag_deduplicate_based_on_aligned_subsequences_for_visualization' : flag_deduplicate_based_on_aligned_subsequences_for_visualization,
         'float_thres_avg_blosum62_score_for_mhc' : float_thres_avg_blosum62_score_for_mhc,
         'float_thres_min_mhc_allele_frequency' : float_thres_min_mhc_allele_frequency,
         'l_window_size' : l_window_size,
@@ -470,32 +475,47 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     Info( "[Task Completion] Exporting data for CRESSP web application was completed at " + TIME_GET_timestamp( True ) )
 
 
-def Parse_Structural_Properties( dir_file_df_sp, name_col_for_identifying_protein = 'id_protein' ) :
+def Parse_Structural_Properties( dir_file_df_sp, int_datatype = None, name_col_for_identifying_protein = 'id_protein' ) :
     """
     # 2021-05-31 20:29:02 
     parse structural properties with typical parameters for parsing ascii-encoded structural properties and typical column names  
     
     'dir_file_df_sp' : a file directory to TSV file containing structural properties estimated from CRESSP. Alternatively, a dataframe of the TSV file can be given as an input.
-    
+    'int_datatype' : used for initializing 'datatype_acc' if 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' column does not exist
     'name_col_for_identifying_protein' : columne name of the given tabular data for identifying a unique protein. The unique value in the column will be used as a 'key' in the returned dicitonaries
     
     """
     df_sp = pd.read_csv( dir_file_df_sp, sep = '\t' ) if isinstance( dir_file_df_sp, ( str ) ) else dir_file_df_sp # read database of structural properties # if an object that is not a string datatype is given, assumes 'dir_file_df_sp' is a dataframe containing structural properties
+    df_sp.set_index( name_col_for_identifying_protein, inplace = True )
     
     dict_kw_rsa = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = 0, value_max = 1 )
     dict_kw_torsion_angle = dict( ascii_min = 33, ascii_max = 126, l_ascii_to_exclude = [ 62 ], n_char = 2, value_min = -180, value_max = 180 )
     dict_kw_ss8 = dict( ascii_min = 33, ascii_max = 41, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 8 )
     dict_kw_datatype = dict( ascii_min = 33, ascii_max = 36, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 3 )
 
+    
     dict_sp = dict( )
-    dict_sp[ 'acc' ] = ASCII_Decode( df_sp.set_index( name_col_for_identifying_protein ).rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1.to_dict( ), ** dict_kw_rsa ) # decode mkdssp outputs of RCSB PDB data
-    dict_sp[ 'phi' ] = ASCII_Decode( df_sp.set_index( name_col_for_identifying_protein )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].to_dict( ), ** dict_kw_torsion_angle )
-    dict_sp[ 'psi' ] = ASCII_Decode( df_sp.set_index( name_col_for_identifying_protein )[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].to_dict( ), ** dict_kw_torsion_angle )
-    dict_sp[ 'ss8' ] = ASCII_Decode( df_sp.set_index( name_col_for_identifying_protein )[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].to_dict( ), ** dict_kw_ss8 )
-    dict_sp[ 'datatype_acc' ] = ASCII_Decode( df_sp.set_index( name_col_for_identifying_protein )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].to_dict( ), ** dict_kw_datatype )
-    dict_fasta = df_sp.set_index( name_col_for_identifying_protein )[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
-    dict_sp[ 'structure_id' ] = dict( ( acc, Decode_List_of_Strings( dict_fasta[ acc ] ) ) for acc in dict_fasta )
-    dict_sp[ 'seq' ] = df_sp.set_index( name_col_for_identifying_protein )[ 'seq' ].to_dict( )
+    dict_sp[ 'acc' ] = ASCII_Decode( df_sp.rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1.to_dict( ), ** dict_kw_rsa ) # decode mkdssp outputs of RCSB PDB data
+    dict_sp[ 'phi' ] = ASCII_Decode( df_sp[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].to_dict( ), ** dict_kw_torsion_angle )
+    dict_sp[ 'psi' ] = ASCII_Decode( df_sp[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].to_dict( ), ** dict_kw_torsion_angle )
+    dict_sp[ 'ss8' ] = ASCII_Decode( df_sp[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].to_dict( ), ** dict_kw_ss8 )
+    if 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' in df_sp.columns.values :
+        dict_sp[ 'datatype_acc' ] = ASCII_Decode( df_sp[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].to_dict( ), ** dict_kw_datatype )
+    else :
+        if int_datatype is not None :
+            return -1
+            
+        # initialization of a dictionary of arrays containing the identifier of the current dataset of 'acc' datatype
+        dict_datatype_acc = dict( )
+        for h in dict_sp[ 'acc' ] :
+            arr = np.zeros_like( dict_sp[ 'acc' ][ h ] ) # default = 0 (predicted structural property)
+            arr[ ~ np.isnan( dict_sp[ 'acc' ][ h ] ) ] = int_datatype
+            dict_datatype_acc[ h ] = arr
+        dict_sp[ 'datatype_acc' ] = dict_datatype_acc
+    if 'structure_id___redundancy_reduced' in df_sp.columns.values :
+        dict_fasta = df_sp[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
+        dict_sp[ 'structure_id' ] = dict( ( acc, Decode_List_of_Strings( dict_fasta[ acc ] ) ) for acc in dict_fasta )
+        dict_sp[ 'seq' ] = df_sp[ 'seq' ].to_dict( )
     
     return dict_sp
 
