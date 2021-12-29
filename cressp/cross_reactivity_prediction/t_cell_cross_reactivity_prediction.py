@@ -41,8 +41,9 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
 
     ''' retrieve MHC-I alleles with allele frequency larger then the given threshold in at least one population '''
     PKG.Download_Data( "data/mhc_population_allele_frequency.tsv.gz", dir_remote, name_package ) # download data
+    PKG.Download_Data( "data/autoimmune_disease_associated_mhc_alleles.tsv.gz", dir_remote, name_package ) # download data
     df_mhc_af = pd.read_csv( f"{dir_folder_cressp}data/mhc_population_allele_frequency.tsv.gz", sep = '\t', index_col = [ 0, 1 ] )
-    l_mhc_i_allele = PD_Threshold( ( df_mhc_af.loc[ 'I' ] > float_thres_min_mhc_allele_frequency ).sum( axis = 1 ), a = 0 ).index.values # retrieve mhc_i_alleles with allele frequency > 'float_thres_min_mhc_allele_frequency' in at least one population
+    l_mhc_i_allele = list( PD_Threshold( ( df_mhc_af.loc[ 'I' ] > float_thres_min_mhc_allele_frequency ).sum( axis = 1 ), a = 0 ).index.values ) + list( pd.read_csv( f"{dir_folder_cressp}data/autoimmune_disease_associated_mhc_alleles.tsv.gz", sep = '\t' ).mhc_allele.unique( ) ) # retrieve mhc_i_alleles with allele frequency > 'float_thres_min_mhc_allele_frequency' in at least one population # also retrieve autoimmune-associated alleles
     l_mhc_i_allele = list( set( l_mhc_i_allele ).intersection( predictor.supported_alleles ) ) # retrive valid alleles for MHCflurry
 
     ''' prepare df_matched before iteration '''
@@ -110,7 +111,6 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
                 dict_data[ f'query_affinity_{str_allele}' ] = df_predicted_query_subsequence.affinity.values
                 dict_data[ f'target_affinity_{str_allele}' ] = df_predicted_target_subsequence.affinity.values
             df_subsequence_mhc_i = df_subsequence_mhc_i.join( pd.DataFrame( dict_data ) ) # combine predicted result
-            df_subsequence_mhc_i.to_csv( f'{dir_folder_pipeline}t_cell.mhc_i.subsequence.filtered.binding_affinity.tsv.gz', sep = '\t', index = False )
 
             ''' prepare a dataframe containing individual records '''
             float_thres_product_binding_affinities = float_thres_binding_affinities_in_nM ** 2 # calculate a threshold for the product of binding affinities for cross-reactivity prediction
