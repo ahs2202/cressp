@@ -959,7 +959,40 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
             """ set flag """
             with open( dir_file_flag, 'w' ) as newfile :
                 newfile.write( 'completed\n' )
+                
+    """
+    AlphaFold Structure Database
+    """
+    dir_file_db_alphafold_structure_db = f'{dir_folder_cressp}data/pdb/AlphaFoldStructureDB.tsv.gz'
+    """ check flag """
+    dir_file_flag = f'{dir_folder_pipeline_struc}{name_file}.blastp_alphafold_structure_db.tsv.gz.completed.flag'
+    if not os.path.exists( dir_file_flag ) :
+        if not flag_use_rcsb_pdb_only :
+            # download and parse associated data (RCSB_PDB)
+            PKG.Download_Data( "data/pdb/AlphaFoldStructureDB.tsv.gz", dir_remote, name_package ) # download data
 
+            df_protein_alphafold_structure_db = pd.read_csv( dir_file_db_alphafold_structure_db, sep = '\t' )
+
+            dir_file_protein_alphafold_structure_db = f'{dir_folder_cressp}data/pdb/alphafold_structure_db.fa' 
+            if not os.path.exists( dir_file_protein_alphafold_structure_db ) : # if rcsb_pdb fasta file is not available, extract the sequence from the dataframe
+                dict_fasta_protein_alphafold_structure_db = df_protein_alphafold_structure_db.set_index( 'header' ).seq.to_dict( )
+                FASTA_Write( dir_file_protein_alphafold_structure_db, dict_fasta = dict_fasta_protein_alphafold_structure_db )
+
+            # create blastp_db using rcsb_pdb protein sequences
+            dir_prefix_blastdb_protein_alphafold_structure_db = f"{dir_folder_cressp}data/pdb/makeblastdb_out/protein_alphafold_structure_db"
+            if not os.path.exists( f"{dir_prefix_blastdb_protein_alphafold_structure_db}.psq" ) : # check whether blastdb exists
+                os.makedirs( f"{dir_folder_cressp}data/pdb/makeblastdb_out/", exist_ok = True )  
+                OS_Run( [ "makeblastdb", "-in", dir_file_protein_alphafold_structure_db, '-dbtype', 'prot', '-parse_seqids', '-max_file_sz', '1GB', '-out', dir_prefix_blastdb_protein_alphafold_structure_db ], dir_file_stdout = f"{dir_prefix_blastdb_protein_alphafold_structure_db}.makeblastdb.stdout.txt", dir_file_stderr = f"{dir_prefix_blastdb_protein_alphafold_structure_db}.makeblastdb.stderr.txt", return_output = False ) # make blast db for protein_query
+
+            # run blastp
+            dir_file_blastp_output = f'{dir_folder_pipeline_struc}{name_file}.blastp_alphafold_structure_db.tsv'
+            OS_Run( [ 'blastp', '-query', dir_file_protein, '-db', dir_prefix_blastdb_protein_alphafold_structure_db, '-out', dir_file_blastp_output, '-outfmt', '6 qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore btop', '-num_threads', f'{n_threads}', '-evalue', f'{float_search_thres_e_value}' ], dir_file_stdout = f"{dir_file_blastp_output}.blastp.stdout.txt", dir_file_stderr = f"{dir_file_blastp_output}.blastp.stderr.txt", return_output = False ) # run blastp
+            OS_Run( [ 'gzip', dir_file_blastp_output ], dir_file_stdout = f"{dir_file_blastp_output}.gzip.stdout.txt", dir_file_stderr = f"{dir_file_blastp_output}.gzip.stderr.txt", return_output = False ) # compress blastp output
+            dir_file_blastp_output += '.gz'
+            
+            """ set flag """
+            with open( dir_file_flag, 'w' ) as newfile :
+                newfile.write( 'completed\n' )
 
     """ 
     Transfer Structural Properties from Experimental & Modeled Protein Structures and Combine Structural Properties
@@ -981,7 +1014,8 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
         dict_header = dict( ( h.split( ' ', 1 )[ 0 ], h ) for h in dict_fasta_protein ) # retrieve a dictionary of header (key = id_protein, value = header)
         dict_fasta_protein = dict( ( h.split( ' ', 1 )[ 0 ], dict_fasta_protein[ h ] ) for h in dict_fasta_protein ) # retrieve sequence_id by spliting the header at the first space (to makes sequence_id consistent with that used with blastp)
 
-        for dir_file_db, name_dataset in zip( [ dir_file_db_rcsb_pdb ] if flag_use_rcsb_pdb_only else [ dir_file_db_rcsb_pdb, dir_file_db_swiss_model ], [ 'rcsb_pdb' ] if flag_use_rcsb_pdb_only else [ 'rcsb_pdb', 'swiss_model' ] ) :
+        for dir_file_db, name_dataset in zip( [ dir_file_db_rcsb_pdb ] if flag_use_rcsb_pdb_only else [ dir_file_db_rcsb_pdb, dir_file_db_swiss_model, dir_file_db_alphafold_structure_db ], [ 'rcsb_pdb' ] if flag_use_rcsb_pdb_only else [ 'rcsb_pdb', 'swiss_model', 'alphafold_structure_db' ] ) :
+            print( dir_file_db, name_dataset )
             """ check flag """
             dir_file_flag = f"{dir_folder_pipeline_struc}{name_file}_transferred_from_{name_dataset}.tsv.gz.completed.flag"
             if not os.path.exists( dir_file_flag ) :
@@ -998,13 +1032,18 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
                     """ filter alignment  """
                     # set threshold values for transferring structural properties from structures to protein sequences
                     float_transfer_pidenta = 70 # percent identity
-                    float_transfer_evalueb = 1e-15 # significance of the alignment 
+                    float_transfer_evalueb = 1e-8 # significance of the alignment 
                     df_blastp = PD_Threshold( df_blastp, pidenta = float_transfer_pidenta, evalueb = float_transfer_evalueb ) # retrieve PDB entries for the transfer of structural property. rational for setting the thresholds : exactly identical sequence with 31 a.a. in length has evalue ~ 1e-15
                     df_blastp.to_csv( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.saving.tsv.gz", sep = '\t', index = False ) # save filtered BLASTP result
                     os.rename( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.saving.tsv.gz", f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.tsv.gz" ) # rename the saved file once write operation is completed
                 else :
                     df_blastp = pd.read_csv( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.tsv.gz", sep = '\t' )
 
+                ''' check whether the blastp result is empty '''
+                l_col_df_transferred = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ]
+                if len( df_blastp ) == 0 :
+                    pd.DataFrame( [ ], columns = l_col_df_transferred ).to_csv( f"{dir_folder_pipeline_struc}{name_file}_transferred_from_{name_dataset}.tsv.gz", sep = '\t', index = False ) # save an empty output file
+                    continue
                 ''' load blastp result globally '''
                 dict_index_df_blastp = DF_Build_Index_Using_Dictionary( df_blastp, l_col_for_index = 'qaccver' )
                 arr_data_df_blastp = df_blastp.values
@@ -1017,8 +1056,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
                 dict_acc_to_arr_ss8_dssp = ASCII_Decode( df_dssp.set_index( 'header' )[ 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C' ].to_dict( ), ** dict_kw_ss8 )
 
                 Multiprocessing( df_blastp.qaccver.unique( ), __Transfer_DSSP_Structural_Property_Through_BLAST__, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_cressp, dir_folder_pipeline_temp ] ) # transfer structural properties with multiple processing
-                l_col = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ]
-                OS_FILE_Combine_Files_in_order( glob.glob( f"{dir_folder_pipeline_temp}*.transferred.tsv.gz" ), f"{dir_folder_pipeline_struc}{name_file}_transferred_from_{name_dataset}.tsv.gz", overwrite_existing_file = True, header = '\t'.join( l_col ) + '\n', delete_input_files = True ) # combine output files
+                OS_FILE_Combine_Files_in_order( glob.glob( f"{dir_folder_pipeline_temp}*.transferred.tsv.gz" ), f"{dir_folder_pipeline_struc}{name_file}_transferred_from_{name_dataset}.tsv.gz", overwrite_existing_file = True, header = '\t'.join( l_col_df_transferred ) + '\n', delete_input_files = True ) # combine output files
 
                 """ set flag """
                 with open( dir_file_flag, 'w' ) as newfile :
@@ -1029,8 +1067,11 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
             ''' when only RCSB_PDB was used, simply rename the output file '''
             os.rename( f"{dir_folder_pipeline_struc}{name_file}_transferred_from_rcsb_pdb.tsv.gz", f"{dir_folder_pipeline_struc}{name_file}_transferred_combined.tsv.gz" )
         else :
-            __Iterate_and_Combine_Structural_Properties__( f"{dir_folder_pipeline_struc}{name_file}_transferred_from_rcsb_pdb.tsv.gz", 2, f"{dir_folder_pipeline_struc}{name_file}_transferred_from_swiss_model.tsv.gz", 1, f"{dir_folder_pipeline_struc}{name_file}_transferred_combined.tsv.gz", flag_debugging = False )
-                
+            ''' combine structural properties from RCSB with those from SWISS-MODELs '''
+            __Iterate_and_Combine_Structural_Properties__( f"{dir_folder_pipeline_struc}{name_file}_transferred_from_rcsb_pdb.tsv.gz", 2, f"{dir_folder_pipeline_struc}{name_file}_transferred_from_swiss_model.tsv.gz", 1, f"{dir_folder_pipeline_struc}{name_file}_transferred_from_rcsb_pdb_and_swiss_model.tsv.gz", flag_debugging = False )
+            ''' combine structural properties from RCSB + SWISS-MODELS with those from AlphaFold structure DB '''
+            __Iterate_and_Combine_Structural_Properties__( f"{dir_folder_pipeline_struc}{name_file}_transferred_from_rcsb_pdb_and_swiss_model.tsv.gz", 2, f"{dir_folder_pipeline_struc}{name_file}_transferred_from_alphafold_structure_db.tsv.gz", 1, f"{dir_folder_pipeline_struc}{name_file}_transferred_combined.tsv.gz", flag_debugging = False )
+
         """ set flag """
         with open( dir_file_flag2, 'w' ) as newfile :
             newfile.write( 'completed\n' )

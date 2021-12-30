@@ -12,7 +12,7 @@ with open(os.path.join(HERE, "README.md")) as fid:
 
 setup(
     name='cressp',
-    version='0.2.7',
+    version='0.2.9',
     author="Hyunsu An",
     author_email="ahs2202@gm.gist.ac.kr",
     description="a program to find cross-reactive epitopes with structural information from known protein structures.",
@@ -26,6 +26,7 @@ setup(
         'tensorflow>=2.3.0',
         'biobookshelf>=0.1.25',
         'mhcflurry>=2.0.2',
+        'pandas>=1.2.0'
     ],
     entry_points={
         "console_scripts": [
