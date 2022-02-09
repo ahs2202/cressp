@@ -2,6 +2,8 @@
 
 # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
 
+[![PyPI version](https://badge.fury.io/py/cressp.svg)](https://badge.fury.io/py/cressp)
+
  A program to find cross-reactive epitopes with structural information from known protein structures.
 
 
