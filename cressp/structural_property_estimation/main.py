@@ -137,7 +137,7 @@ def __Transfer_DSSP_Structural_Property_Through_BLAST__( dir_file_input, dir_fol
     newfile_df_acc.close( ) # close file
 def __Iterate_and_Parse_Structural_Properties__( dir_file_sp, int_datatype = None ) :
     """
-    # 2021-05-03 16:18:16 
+    # 2022-01-09 23:19:14 
     iterate through 'dir_file_sp' structural property database for each record (protein sequence)
     
     parse structural properties with typical parameters for parsing ascii-encoded structural properties and typical column names  
@@ -162,8 +162,9 @@ def __Iterate_and_Parse_Structural_Properties__( dir_file_sp, int_datatype = Non
         return e 
 
     with gzip.open( dir_file_sp, 'rb' ) as file :
-        ''' remove header '''
-        file.readline( ) 
+        ''' read the header line '''
+        l_name_col = file.readline( ).decode( )[ : -1 ].split( '\t' )
+        flag_datatype_acc_does_not_exists = len( l_name_col ) == 7 # retrieve a flag indicating datatype_acc does not exist and should be initialized
         ''' iterate contents header '''
         while True :
             line = file.readline( ).decode( )
@@ -171,9 +172,8 @@ def __Iterate_and_Parse_Structural_Properties__( dir_file_sp, int_datatype = Non
                 break
 
             """ parse line """
-            l_data = list( __remove_quotation__( e ) for e in line.strip( ).split( '\t' ) )
+            l_data = list( __remove_quotation__( e ) for e in line[ : -1 ].split( '\t' ) )
             ''' handle when 'datatype_acc' column does not exist '''
-            flag_datatype_acc_does_not_exists = len( l_data ) == 7 # retrieve a flag indicating datatype_acc does not exist and should be initialized
             if flag_datatype_acc_does_not_exists : # parse with datatype does not exist
                 id_protein, seq, rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1, phi___ascii_encoding_2_characters_from_33_to_126__from_minus180_to_180, psi___ascii_encoding_2_characters_from_33_to_126__from_minus180_to_180, ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C, structure_id___redundancy_reduced = list( __remove_quotation__( e ) for e in line.strip( ).split( '\t' ) ) # parse line
             else :
@@ -225,7 +225,7 @@ def __Encode_and_Write_Structural_Properties__( file_handle, dict_record ) :
     # l_col = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ] # when datatype_acc is not present
 
     ''' encode structural properties '''
-    l_data = [ dict_record[ 'id_protein' ], dict_record[ 'seq' ], ASCII_Encode( [ dict_record[ 'acc' ] ], ** dict_kw_rsa )[ 0 ], ASCII_Encode( [ dict_record[ 'phi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'psi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'ss8' ] ], ** dict_kw_ss8 )[ 0 ] ] + ( [ ASCII_Encode( [ dict_record[ 'datatype_acc' ] ], ** dict_kw_datatype )[ 0 ] ] if 'datatype_acc' in dict_record else [ ] ) + [ Encode_List_of_Strings( dict_record[ 'structure_id' ] ) if not isinstance( dict_record[ 'structure_id' ], float ) else '' ] # if 'datatype_acc' column does not exist, does not include it in the output
+    l_data = [ dict_record[ 'id_protein' ], dict_record[ 'seq' ], ASCII_Encode( [ dict_record[ 'acc' ] ], ** dict_kw_rsa )[ 0 ], ASCII_Encode( [ dict_record[ 'phi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'psi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'ss8' ] ], ** dict_kw_ss8 )[ 0 ] ] + ( [ ASCII_Encode( [ dict_record[ 'datatype_acc' ] ], ** dict_kw_datatype )[ 0 ] ] if 'datatype_acc' in dict_record else [ ] ) + [ Encode_List_of_Strings( dict_record[ 'structure_id' ] if not isinstance( dict_record[ 'structure_id' ], float ) else [ '' ] * len( dict_record[ 'seq' ] ) ) ] # if 'datatype_acc' column does not exist, does not include it in the output
     file_handle.write( ( '\t'.join( list( map( __add_quotation__, l_data ) ) ) + '\n' ).encode( ) ) # write a record
 def __Parse_Structural_Properties__( dir_file_sp, int_datatype ) :
     """
@@ -1026,24 +1026,19 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
 
                 if not os.path.exists( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.tsv.gz" ) :
                     """ process blastp output """
-                    df_blastp = BLAST_Read( dir_file_blastp_output, dict_qaccver_to_seq = dict_fasta_protein )
-                    df_blastp.to_csv( f"{dir_prefix_blastp_output}.with_aligned_seq.tsv.gz", sep = '\t', index = False )
-
                     """ filter alignment  """
                     # set threshold values for transferring structural properties from structures to protein sequences
                     float_transfer_pidenta = 70 # percent identity
                     float_transfer_evalueb = 1e-8 # significance of the alignment 
-                    df_blastp = PD_Threshold( df_blastp, pidenta = float_transfer_pidenta, evalueb = float_transfer_evalueb ) # retrieve PDB entries for the transfer of structural property. rational for setting the thresholds : exactly identical sequence with 31 a.a. in length has evalue ~ 1e-15
-                    df_blastp.to_csv( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.saving.tsv.gz", sep = '\t', index = False ) # save filtered BLASTP result
+                    df_blastp = BLAST_Read( dir_file_blastp_output, dict_qaccver_to_seq = dict_fasta_protein, dir_file_output = f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.saving.tsv.gz", float_transfer_pidenta = float_transfer_pidenta, float_transfer_evalueb = float_transfer_evalueb ) # save filtered BLASTP result
                     os.rename( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.saving.tsv.gz", f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.tsv.gz" ) # rename the saved file once write operation is completed
-                else :
-                    df_blastp = pd.read_csv( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.tsv.gz", sep = '\t' )
+                df_blastp = pd.read_csv( f"{dir_prefix_blastp_output}.with_aligned_seq.filtered.tsv.gz", sep = '\t' )
 
                 ''' check whether the blastp result is empty '''
-                l_col_df_transferred = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ]
                 if len( df_blastp ) == 0 :
                     pd.DataFrame( [ ], columns = l_col_df_transferred ).to_csv( f"{dir_folder_pipeline_struc}{name_file}_transferred_from_{name_dataset}.tsv.gz", sep = '\t', index = False ) # save an empty output file
                     continue
+                l_col_df_transferred = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ]
                 ''' load blastp result globally '''
                 dict_index_df_blastp = DF_Build_Index_Using_Dictionary( df_blastp, l_col_for_index = 'qaccver' )
                 arr_data_df_blastp = df_blastp.values

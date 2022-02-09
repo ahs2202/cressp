@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: cressp
-Version: 0.2.8
+Version: 0.2.9
 Summary: a program to find cross-reactive epitopes with structural information from known protein structures.
 Home-page: https://github.com/ahs2202/cressp
 Author: Hyunsu An
@@ -13,6 +13,8 @@ License-File: LICENSE
 ![CRESSP Logo](https://raw.githubusercontent.com/ahs2202/cressp/master/documentation/cressp_logo.PNG)
 
 # Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
+
+[![PyPI version](https://badge.fury.io/py/cressp.svg)](https://badge.fury.io/py/cressp)
 
  A program to find cross-reactive epitopes with structural information from known protein structures.
 
