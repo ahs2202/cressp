@@ -202,6 +202,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
     dir_folder_pipeline_struc = f'{dir_folder_pipeline}struc/' # create a working directory of estimating structural properties
     dir_folder_pipeline_web = f'{dir_folder_pipeline}web_application/' # a working directory for exporting data for web applications
     dir_folder_web = f'{dir_folder_output}web_application/'
+    
     # create folders
     for dir_folder in [ dir_folder_output, dir_folder_pipeline, dir_folder_pipeline_temp, dir_folder_pipeline_struc, dir_folder_pipeline_web, dir_folder_web ] :
         os.makedirs( dir_folder, exist_ok = True )
@@ -425,6 +426,11 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
             newfile.write( 'completed\n' )
     Info( "[Task Completion] Estimation of structural properties of input protein sequences completed at " + TIME_GET_timestamp( True ) )
 
+    ''' empty temporary folder '''
+    if os.path.exists( dir_folder_pipeline_temp ) :
+        shutil.rmtree( dir_folder_pipeline_temp )
+    os.makedirs( dir_folder_pipeline_temp, exist_ok = True )
+    
     """
     Calculate B-cell epitope similarity scores based on structural properties of proteins 
     """

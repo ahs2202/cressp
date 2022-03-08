@@ -209,7 +209,10 @@ def BCell_Combine_result_files_for_each_window_size( dir_file_input, dir_folder_
         l_dir_file = glob.glob( f"{dir_folder_pipeline_temp}*_window_size_{int_window_size}.tsv.gz" ) # retrieve list of output files to combine into a single output file
         dir_file_output_combining = f'{dir_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.combining.tsv.gz'
         dir_file_output_combining_completed = f'{dir_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.tsv.gz'
-        OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, flag_use_header_from_first_file = True, remove_n_lines = 1, delete_input_files = True )
+        # if an output file exists, remove the output file
+        if os.path.exists( dir_file_output_combining_completed ) :
+            os.remove( dir_file_output_combining_completed )
+        OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, flag_use_header_from_first_file = True, remove_n_lines = 1, delete_input_files = True, overwrite_existing_file = True )
         print( f"combining output files for window size {int_window_size} is completed" )
         os.rename( dir_file_output_combining, dir_file_output_combining_completed ) # rename the file once completed
 def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipeline_temp = None, n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0, float_thres_rsa_correlation = 0 ) :
@@ -281,6 +284,8 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
         del set_id_protein_target, dict_fasta_protein_target, dict_arr_float_empty
     
     """ predict b-cell cross-reactivity """
+#     l_window_size_requires_running = list( window_size for window_size in l_window_size if not os.path.exists( f"{dir_folder_pipeline}b_cell.subsequence__window_size_{window_size}.tsv.gz" ) )
+    
     l_uuid_process = Multiprocessing( df_matched, BCell_Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
     # combine output files for each window size
     Multiprocessing( l_window_size, BCell_Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size

@@ -499,6 +499,9 @@ def __Predict_Structural_Properties_of_Remaining_Residues__( dir_file_protein, d
         ''' collect records for a batch '''
         if not flag_all_records_were_retrieved :
             l_dict_record_for_a_batch.append( dict_record )
+        elif len( l_dict_record_for_a_batch ) == 0 : # if all records for a batch have been retrieved but there is no records remaining to be calculated (this happens when 'n_proteins' is multiple of 'int_number_of_proteins_in_a_batch_during_dnn_prediction')
+            print( f"all {int_n_records_processed} proteins has been processed at " + TIME_GET_timestamp( True ) ) # report progress
+            break
         ''' when collection is complete, operate on the batch '''
         if len( l_dict_record_for_a_batch ) >= int_number_of_proteins_in_a_batch_during_dnn_prediction or flag_all_records_were_retrieved :
             ''' defint an output file directory '''
