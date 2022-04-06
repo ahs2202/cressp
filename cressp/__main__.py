@@ -30,7 +30,7 @@ Info = multiprocessing.get_logger( ).info
 #     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
 #         dict_blosum62[ aa_0, aa_1 ] = score
 
-def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5, float_thres_binding_affinities_in_nM = 500, flag_replace_unconventional_acid_code = False, flag_use_all_gpu_devices = False, flag_deduplicate_based_on_aligned_subsequences_for_visualization = False ) :
+def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', dir_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_use_HMM_search = False, dir_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5, float_thres_binding_affinities_in_nM = 500, flag_replace_unconventional_acid_code = False, flag_use_gpu_devices = False, flag_use_all_gpu_devices = False, flag_deduplicate_based_on_aligned_subsequences_for_visualization = False ) :
     """
     The main function of Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
     
@@ -124,6 +124,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
         parser.add_argument( "-m", "--float_thres_min_mhc_allele_frequency", help = "(Default: 0.5) a threshold for filtering out MHC alleles with low allele frequencies. MHC alleles with allele frequency above the threshold for at least one population will be used for cross-reactive T-cell epitope prediction", default = '0.5' )
         parser.add_argument( "-a", "--float_thres_binding_affinities_in_nM", help = "(Default: 500) a threshold predicted IC50 values for filtering predicted T-cell cross-reactive epitopes. A pair of peptides whose geometric average of predicted binding affinities (IC50) values above this threshold will be removed.", default = '500' )
         parser.add_argument( "-U", "--flag_replace_unconventional_acid_code", help = "(Default: False) If this flag is set, unconventional amino acids in the input protein sequences will be replaced with chemically similar amino acid. Specifically, Selenocysteine (U) to Cysteine (C), Pyrrolysine (O) to Tyrosine (Y)", action = 'store_true' )
+        parser.add_argument( "-P", "--flag_use_gpu_devices", help = "(Default: False) Use available GPU device(s) during prediction of RSA values. When this flag is set to True, the RSA prediction might be completed faster, but GPU memories will be occupied by Tensorflow", action = 'store_true' )
         parser.add_argument( "-G", "--flag_use_all_gpu_devices", help = "(Default: False) Use all available GPU devices during prediction of RSA values. When this flag is set to True, the RSA prediction might be completed faster, but all GPU memories will be occupied by Tensorflow", action = 'store_true' )
         parser.add_argument( "-D", "--flag_deduplicate_based_on_aligned_subsequences_for_visualization", help = "(Default: False) perform the deduplication step for removing redundant predicted cross-reactive epitopes based on aligned subsequences", action = 'store_true' )
         args = parser.parse_args( )
@@ -132,6 +133,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
             sys.exit( )
 
         # parse arguments # no further processing required
+        flag_use_gpu_devices = args.flag_use_gpu_devices
         flag_use_HMM_search = args.flag_use_HMM_search
         flag_use_rcsb_pdb_only = args.flag_use_rcsb_pdb_only
         flag_only_use_structural_properties_of_query_proteins = args.flag_only_use_structural_properties_of_query_proteins
@@ -415,7 +417,7 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
             """ check flag_2 """
             dir_file_flag_2 = f"{dir_folder_pipeline}{name_file}.tsv.gz.completed.flag"
             if not os.path.exists( dir_file_flag_2 ) :
-                Estimate_structural_property( f'{dir_folder_pipeline}{name_file}.fasta', n_threads, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only, int_number_of_proteins_in_a_batch_during_dnn_prediction, flag_use_all_gpu_devices )
+                Estimate_structural_property( f'{dir_folder_pipeline}{name_file}.fasta', n_threads, dir_folder_pipeline, dir_folder_pipeline_temp, flag_use_rcsb_pdb_only, int_number_of_proteins_in_a_batch_during_dnn_prediction, flag_use_gpu_devices, flag_use_all_gpu_devices )
 
                 """ set flag_2 """
                 with open( dir_file_flag_2, 'w' ) as newfile :

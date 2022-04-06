@@ -3,9 +3,6 @@ from biobookshelf import *
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
-import tensorflow as tf
-from tensorflow.keras import layers
-
 # define read-only global variables during multiprocessing
 dict_index_df_blastp, arr_data_df_blastp, dict_acc_to_arr_acc_dssp, dict_acc_to_arr_phi_dssp, dict_acc_to_arr_psi_dssp, dict_acc_to_arr_ss8_dssp, dict_kw_rsa, dict_kw_torsion_angle, dict_kw_ss8, dict_kw_datatype, dict_fasta_protein = [ dict( ) ] * 11
 
@@ -385,7 +382,7 @@ def __Encode_Structural_Properties__( dict_sp, dict_fasta_protein ) :
     df_sp[ 'structure_id___redundancy_reduced' ] = pd.Series( dict( ( h, Encode_List_of_Strings( dict_sp[ 'structure_id' ][ h ] ) ) for h in dict_sp[ 'structure_id' ] ) )
     df_sp.reset_index( drop = False, inplace = True )
     return df_sp
-def __Predict_Structural_Properties_of_Remaining_Residues__( dir_file_protein, dir_folder_pipeline = None, dir_folder_pipeline_temp = '/tmp/', int_number_of_proteins_in_a_batch_during_dnn_prediction = 100, flag_use_all_gpu_devices = False ) :
+def __Predict_Structural_Properties_of_Remaining_Residues__( dir_file_protein, dir_folder_pipeline = None, dir_folder_pipeline_temp = '/tmp/', int_number_of_proteins_in_a_batch_during_dnn_prediction = 100, flag_use_gpu_devices = False, flag_use_all_gpu_devices = False ) :
     """
     Parse arguments
     """
@@ -454,6 +451,8 @@ def __Predict_Structural_Properties_of_Remaining_Residues__( dir_file_protein, d
     index_rsa = len( l_amino_acids ) + len( l_ss8 ) # index of rsa data in the input array
 
     ''' predict and update structural properties using ML models for each batch '''
+    if not flag_use_gpu_devices : # ignore GPU devices available in the machine
+        os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     import tensorflow as tf
     from tensorflow.keras import layers
 
@@ -851,7 +850,7 @@ def __Combine_Structural_Properties_and_Predict_Remaining_Residues__( dir_file_p
     df_sp = __Encode_Structural_Properties__( dict_sp, dict_fasta_protein ) # encode structural properties into a dataframe
     df_sp[ 'fasta_header' ] = list( dict_header[ i ] for i in df_sp.id_protein.values ) # retrieve headers
     df_sp.to_csv( f"{dir_folder_pipeline}{name_file}.tsv.gz", sep = '\t', index = False ) # save structural properties of input proteins as a tabular file
-def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeline = None, dir_folder_pipeline_temp = '/tmp/', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_use_all_gpu_devices = False, flag_predict_structural_properties_of_remaining_residues_using_dnn = True ) :
+def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeline = None, dir_folder_pipeline_temp = '/tmp/', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_use_gpu_devices = False, flag_use_all_gpu_devices = False, flag_predict_structural_properties_of_remaining_residues_using_dnn = True ) :
     """
     # 2021-05-31 15:13:13 
     Estimate structural properties of given proteins, and write a tsv file containing structural properties of the proteins.
@@ -1081,7 +1080,7 @@ def Estimate_structural_property( dir_file_protein, n_threads, dir_folder_pipeli
     dir_file_flag = f"{dir_folder_pipeline}{name_file}.tsv.gz.completed.flag"
     if not os.path.exists( dir_file_flag ) :
         if flag_predict_structural_properties_of_remaining_residues_using_dnn :
-            __Predict_Structural_Properties_of_Remaining_Residues__( dir_file_protein, dir_folder_pipeline, dir_folder_pipeline_temp, int_number_of_proteins_in_a_batch_during_dnn_prediction, flag_use_all_gpu_devices ) # predict RSA
+            __Predict_Structural_Properties_of_Remaining_Residues__( dir_file_protein, dir_folder_pipeline, dir_folder_pipeline_temp, int_number_of_proteins_in_a_batch_during_dnn_prediction, flag_use_gpu_devices, flag_use_all_gpu_devices ) # predict RSA
         else :
             shutil.copyfile( f"{dir_folder_pipeline_struc}{name_file}_transferred_combined.tsv.gz", f"{dir_folder_pipeline}{name_file}.tsv.gz" ) # simply copy the the file containing combined transferred structural properties as the output file
             
