@@ -4,3 +4,4 @@ cressp/data/pdb/rcsb_pdb.tsv.gz filter=lfs diff=lfs merge=lfs -text
 cressp/data/pdb/swiss_model.tsv.gz filter=lfs diff=lfs merge=lfs -text
 cressp/data/pdb/AlphaFoldStructureDB.tsv.gz filter=lfs diff=lfs merge=lfs -text
 cressp/data/human/hmmdb_autoantigen.hmm filter=lfs diff=lfs merge=lfs -text
+cressp/data/human/hmmdb.hmm.gz filter=lfs diff=lfs merge=lfs -text

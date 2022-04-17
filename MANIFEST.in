@@ -22,3 +22,6 @@ exclude cressp/data/mhc_population_allele_frequency.tsv.gz
 exclude cressp/data/mhc_population_allele_frequency.tsv.gz.download_completed.flag
 exclude cressp/data/autoimmune_disease_associated_mhc_alleles.tsv.gz
 exclude cressp/data/autoimmune_disease_associated_mhc_alleles.tsv.gz.download_completed.flag
+exclude cressp/data/human/hmmdb.hmm.gz
+exclude cressp/data/human/hmmdb.hmm.gz.download_completed.flag
+exclude cressp/data/human/hmmdb.hmm.gz.gunzip_completed.flag
