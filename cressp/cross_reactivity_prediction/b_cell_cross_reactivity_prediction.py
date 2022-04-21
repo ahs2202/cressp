@@ -6,7 +6,7 @@ pd.options.mode.chained_assignment = None  # default='warn' # to disable worinin
 # define global read-only variables
 dict_acc_to_arr_acc_query, dict_acc_to_arr_datatype_acc_query, dict_acc_to_arr_phi_query, dict_acc_to_arr_psi_query, dict_acc_to_arr_ss8_query, dict_acc_to_arr_structure_id_query, dict_acc_to_arr_acc_target, dict_acc_to_arr_datatype_acc_target, dict_acc_to_arr_phi_target, dict_acc_to_arr_psi_target, dict_acc_to_arr_ss8_target, dict_acc_to_arr_structure_id_target = [ dict( ) ] * 12
 
-def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, float_thres_avg_score_blosum_weighted, float_thres_avg_score_blosum, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ) :
+def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( path_file_input, float_thres_avg_score_blosum_weighted, float_thres_avg_score_blosum, float_thres_rsa_correlation, l_window_size, path_folder_cressp, path_folder_pipeline, path_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ) :
     """
     Calculate_Similarity_Scores_in_Aligned_Sequences
     using structural properties of both query and target proteins
@@ -18,11 +18,11 @@ def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, floa
     float_scaling_factor_for_diff_acc = 0.25 
 
     # read input alignment between query and target proteins
-    df_matched = pd.read_csv( dir_file_input, sep = '\t' )
+    df_matched = pd.read_csv( path_file_input, sep = '\t' )
 
     # prepare Blosum62 score matrix including all non-conventional annotations of amino acids # 2020-10-29 02:15:32 
     # read dict_blosum62 from the tsv file
-    df_blosum62 = pd.read_csv( f'{dir_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
+    df_blosum62 = pd.read_csv( f'{path_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
     dict_blosum62 = dict( )
     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
         dict_blosum62[ aa_0, aa_1 ] = score
@@ -33,8 +33,8 @@ def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, floa
     # for each window_size
     for int_window_size in l_window_size :
         ''' initialize the output file '''
-        dir_file_output = f"{dir_folder_pipeline_temp}{uuid_process}_window_size_{int_window_size}.tsv.gz"
-        file_output = gzip.open( dir_file_output, 'wb' )
+        path_file_output = f"{path_folder_pipeline_temp}{uuid_process}_window_size_{int_window_size}.tsv.gz"
+        file_output = gzip.open( path_file_output, 'wb' )
         l_col = [ 'window_size', 'id_alignment', 'source', 'query_accession', 'target_accession', 'e_value', 'identity', 'alignment_start', 'alignment_end', 'query_start', 'query_end', 'target_start', 'target_end', 'query_subsequence', 'target_subsequence', 'score_blosum', 'score_blosum_weighted', 'sum_of_weights', 'score_similarity_acc', 'score_similarity_phi', 'score_similarity_psi', 'score_similarity_ss8', 'n_residues_acc', 'n_residues_phi', 'n_residues_psi', 'n_residues_ss8', 'correl_coeffi_acc', 'correl_p_value_acc', 'correl_coeffi_phi', 'correl_p_value_phi', 'correl_coeffi_psi', 'correl_p_value_psi', 'prop_pdb_evidence_query', 'prop_pdb_evidence_target', 'structure_id_query', 'count_structure_id_query', 'structure_id_target', 'count_structure_id_target', 'most_frequent_ss8_query', 'count_most_frequent_ss8_query', 'most_frequent_ss8_target', 'count_most_frequent_ss8_target' ]
         file_output.write( ( '\t'.join( l_col ) + '\n' ).encode( ) ) # write header to the output file
         n_errors = 0
@@ -200,36 +200,36 @@ def BCell_Calculate_Similarity_Scores_in_Aligned_Sequences( dir_file_input, floa
                 print( f"error number {n_errors}", traceback.format_exc( ) )
         file_output.close( ) # close output file
     return uuid_process # return the UUID of the current process 
-def BCell_Combine_result_files_for_each_window_size( dir_file_input, dir_folder_pipeline, dir_folder_pipeline_temp ) :
+def BCell_Combine_result_files_for_each_window_size( path_file_input, path_folder_pipeline, path_folder_pipeline_temp ) :
     """
     combine result files for each window_size
     """
-    for arr_input in pd.read_csv( dir_file_input, sep = '\t', header = None ).values :
+    for arr_input in pd.read_csv( path_file_input, sep = '\t', header = None ).values :
         int_window_size = arr_input[ 0 ]
-        l_dir_file = glob.glob( f"{dir_folder_pipeline_temp}*_window_size_{int_window_size}.tsv.gz" ) # retrieve list of output files to combine into a single output file
-        dir_file_output_combining = f'{dir_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.combining.tsv.gz'
-        dir_file_output_combining_completed = f'{dir_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.tsv.gz'
+        l_path_file = glob.glob( f"{path_folder_pipeline_temp}*_window_size_{int_window_size}.tsv.gz" ) # retrieve list of output files to combine into a single output file
+        path_file_output_combining = f'{path_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.combining.tsv.gz'
+        path_file_output_combining_completed = f'{path_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.tsv.gz'
         # if an output file exists, remove the output file
-        if os.path.exists( dir_file_output_combining_completed ) :
-            os.remove( dir_file_output_combining_completed )
-        OS_FILE_Combine_Files_in_order( l_dir_file, dir_file_output_combining, flag_use_header_from_first_file = True, remove_n_lines = 1, delete_input_files = True, overwrite_existing_file = True )
+        if os.path.exists( path_file_output_combining_completed ) :
+            os.remove( path_file_output_combining_completed )
+        OS_FILE_Combine_Files_in_order( l_path_file, path_file_output_combining, flag_use_header_from_first_file = True, remove_n_lines = 1, delete_input_files = True, overwrite_existing_file = True )
         print( f"combining output files for window size {int_window_size} is completed" )
-        os.rename( dir_file_output_combining, dir_file_output_combining_completed ) # rename the file once completed
-def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipeline_temp = None, n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0, float_thres_rsa_correlation = 0 ) :
+        os.rename( path_file_output_combining, path_file_output_combining_completed ) # rename the file once completed
+def Predict_B_cell_cross_reactivity( path_folder_pipeline = None, path_folder_pipeline_temp = None, n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0, float_thres_rsa_correlation = 0 ) :
     
     """
     Package settings
     """
     name_package = 'cressp'
-    dir_remote = 'https://github.com/ahs2202/cressp/raw/main/cressp/' # remote directory from which datafiles will be downloaded
-    dir_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
+    path_remote = 'https://github.com/ahs2202/cressp/raw/main/cressp/' # remote directory from which datafiles will be downloaded
+    path_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
 
     
     """
     Predict_B_cell_cross_reactivity
     """
-    dir_file_matched = f'{dir_folder_pipeline}matched.tsv.gz'
-    df_matched = pd.read_csv( dir_file_matched, sep = '\t' ) # read alignments between query and target protein sequences
+    path_file_matched = f'{path_folder_pipeline}matched.tsv.gz'
+    df_matched = pd.read_csv( path_file_matched, sep = '\t' ) # read alignments between query and target protein sequences
     df_matched.index.name = 'id_alignment' # retrieve id_alignment (index of df_matched) during retrieving subsequences
     df_matched.reset_index( drop = False, inplace = True ) # add id_alignment column to to the dataframe
     print( f"number of records: {len( df_matched )}" )
@@ -246,7 +246,7 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
     dict_kw_datatype = dict( ascii_min = 33, ascii_max = 36, l_ascii_to_exclude = [ 62 ], n_char = 1, value_min = 0, value_max = 3 )
 
     # load structural property data for query protein sequences
-    df_protein_query = PD_Select( pd.read_csv( f'{dir_folder_pipeline}protein_query.tsv.gz', sep = '\t' ), id_protein = df_matched.query_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
+    df_protein_query = PD_Select( pd.read_csv( f'{path_folder_pipeline}protein_query.tsv.gz', sep = '\t' ), id_protein = df_matched.query_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
     dict_acc_to_arr_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa )
     dict_acc_to_arr_datatype_acc_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
     dict_acc_to_arr_phi_query = ASCII_Decode( df_protein_query.set_index( 'id_protein' )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
@@ -258,7 +258,7 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
     
     # load structural property data for target protein sequences
     if not flag_only_use_structural_properties_of_query_proteins :
-        df_protein_target = PD_Select( pd.read_csv( f'{dir_folder_pipeline}protein_target.tsv.gz', sep = '\t' ), id_protein = df_matched.target_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
+        df_protein_target = PD_Select( pd.read_csv( f'{path_folder_pipeline}protein_target.tsv.gz', sep = '\t' ), id_protein = df_matched.target_accession.unique( ) ) # subset structural property database with id_proteins in the alignments
         dict_acc_to_arr_acc_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa )
         dict_acc_to_arr_datatype_acc_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB' ].dropna( ).to_dict( ), ** dict_kw_datatype )
         dict_acc_to_arr_phi_target = ASCII_Decode( df_protein_target.set_index( 'id_protein' )[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle )
@@ -270,7 +270,7 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
     else :
         ''' retrieve target protein sequence exist in the alignments '''
         set_id_protein_target = set( df_matched.target_accession.unique( ) )
-        dict_fasta_protein_target = FASTA_Read( f"{dir_folder_pipeline}protein_target.fasta" )
+        dict_fasta_protein_target = FASTA_Read( f"{path_folder_pipeline}protein_target.fasta" )
         dict_fasta_protein_target = dict( ( h.split( ' ', 1 )[ 0 ], dict_fasta_protein_target[ h ] ) for h in dict_fasta_protein_target if h.split( ' ', 1 )[ 0 ] in set_id_protein_target ) # retrieve sequence_id by spliting the header at the first space (to makes sequence_id consistent with that used with blastp) # subset protein sequences with id_proteins in the alignments
         dict_arr_float_empty = dict( ( h, np.full( len( dict_fasta_protein_target[ h ] ), np.nan ) ) for h in dict_fasta_protein_target )
         
@@ -284,29 +284,29 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
         del set_id_protein_target, dict_fasta_protein_target, dict_arr_float_empty
     
     """ predict b-cell cross-reactivity """
-#     l_window_size_requires_running = list( window_size for window_size in l_window_size if not os.path.exists( f"{dir_folder_pipeline}b_cell.subsequence__window_size_{window_size}.tsv.gz" ) )
+#     l_window_size_requires_running = list( window_size for window_size in l_window_size if not os.path.exists( f"{path_folder_pipeline}b_cell.subsequence__window_size_{window_size}.tsv.gz" ) )
     
-    l_uuid_process = Multiprocessing( df_matched, BCell_Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, dir_temp = dir_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation, l_window_size, dir_folder_cressp, dir_folder_pipeline, dir_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
+    l_uuid_process = Multiprocessing( df_matched, BCell_Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, path_temp = path_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation, l_window_size, path_folder_cressp, path_folder_pipeline, path_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
     # combine output files for each window size
-    Multiprocessing( l_window_size, BCell_Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), dir_temp = dir_folder_pipeline_temp, global_arguments = [ dir_folder_pipeline, dir_folder_pipeline_temp ] ) # combine result files for each window_size
+    Multiprocessing( l_window_size, BCell_Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), path_temp = path_folder_pipeline_temp, global_arguments = [ path_folder_pipeline, path_folder_pipeline_temp ] ) # combine result files for each window_size
     
 
     #     # Bin similarity scores by acc_query and a given binning size for analysis
     #     size_window_binning = 100
     #     size_overlap_binning = 50
 
-    #     Multiprocessing( l_window_size, Bin_Similarity_Scores, n_threads = min( len( l_window_size ), int( OS_Memory( )[ 'MemAvailable' ] / 1e7 ) ), dir_temp = dir_folder_pipeline_temp ) # combine result files for each window_size
+    #     Multiprocessing( l_window_size, Bin_Similarity_Scores, n_threads = min( len( l_window_size ), int( OS_Memory( )[ 'MemAvailable' ] / 1e7 ) ), path_temp = path_folder_pipeline_temp ) # combine result files for each window_size
     
     
-# def Bin_Similarity_Scores( dir_file_input ) :
+# def Bin_Similarity_Scores( path_file_input ) :
 #     """
 #     # 2021-03-31 13:01:07 
 #     bin similarity scores 
 #     """
-#     for arr_input in pd.read_csv( dir_file_input, header = None, sep = '\t' ).values :
+#     for arr_input in pd.read_csv( path_file_input, header = None, sep = '\t' ).values :
 #         int_window_size = int( arr_input[ 0 ] )
-#         df_matched = pd.read_csv( dir_file_matched, sep = '\t', low_memory = False )
-#         df_subsequence = pd.read_csv( f'{dir_folder_pipeline}subsequence__window_size_{int_window_size}__struc_data_human_only.tsv.gz', sep = '\t', low_memory = False )
+#         df_matched = pd.read_csv( path_file_matched, sep = '\t', low_memory = False )
+#         df_subsequence = pd.read_csv( f'{path_folder_pipeline}subsequence__window_size_{int_window_size}__struc_data_human_only.tsv.gz', sep = '\t', low_memory = False )
 #         df_subsequence.index.name = 'id_subsequence'
 #         df_subsequence.reset_index( drop = False, inplace = True )
 #         df = df_subsequence[ [ 'id_subsequence', "query_start", "query_end", 'score_blosum_weighted' ] ]
@@ -315,12 +315,12 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
         
 #         # Bin similarity scores by acc_query for analysis
 #         s = df[ [ 'score_blosum_weighted', 'acc_query' ] ].groupby( 'acc_query' ).max( ).score_blosum_weighted
-#         dir_file_output = f"{dir_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_accession.tsv.gz"
-#         s.to_csv( dir_file_output, sep = '\t' )
+#         path_file_output = f"{path_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_accession.tsv.gz"
+#         s.to_csv( path_file_output, sep = '\t' )
         
 #         # Binning by 100 amino acid long region of acc_query with 50 amino acid overlaps
 #         # build interval trees for score binning
-#         df_uniprot_humans = pd.read_csv( dir_file_human_protein_db, sep = '\t' ) # load human proteins used for sequence similarity search
+#         df_uniprot_humans = pd.read_csv( path_file_human_protein_db, sep = '\t' ) # load human proteins used for sequence similarity search
 #         dict_acc_to_it = dict( )
 #         for acc, length in df_uniprot_humans[ [ 'id_protein', 'seq_length' ] ].values :
 #             dict_acc_to_it[ acc ] = intervaltree.IntervalTree( )
@@ -352,10 +352,10 @@ def Predict_B_cell_cross_reactivity( dir_folder_pipeline = None, dir_folder_pipe
 #         s_id_subsequence_with_max_score.index.name = 'id_feature'
 #         s_id_subsequence_with_max_score.name = "id_subsequence"
         
-#         dir_file_output_binning_by_acc_query_region__score = f"{dir_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_{size_window_binning}_overlap_{size_overlap_binning}.score.tsv.gz"
-#         dir_file_output_binning_by_acc_query_region__id = f"{dir_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_{size_window_binning}_overlap_{size_overlap_binning}.id.tsv.gz"
-#         s_max_score.to_csv( dir_file_output_binning_by_acc_query_region__score, sep = '\t' )
-#         s_id_subsequence_with_max_score.to_csv( dir_file_output_binning_by_acc_query_region__id, sep = '\t' )
+#         path_file_output_binning_by_acc_query_region__score = f"{path_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_{size_window_binning}_overlap_{size_overlap_binning}.score.tsv.gz"
+#         path_file_output_binning_by_acc_query_region__id = f"{path_folder_pipeline}similarity_score__window_size_{int_window_size}.max.bin_{size_window_binning}_overlap_{size_overlap_binning}.id.tsv.gz"
+#         s_max_score.to_csv( path_file_output_binning_by_acc_query_region__score, sep = '\t' )
+#         s_id_subsequence_with_max_score.to_csv( path_file_output_binning_by_acc_query_region__id, sep = '\t' )
 
 
     

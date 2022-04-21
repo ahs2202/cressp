@@ -3,7 +3,7 @@ from biobookshelf import *
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
-def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM, flag_replace_unconventional_acid_code ) :
+def Predict_T_cell_cross_reactivity( path_folder_pipeline, float_thres_avg_blosum62_score_for_mhc, float_thres_min_mhc_allele_frequency, float_thres_binding_affinities_in_nM, flag_replace_unconventional_acid_code ) :
     """
     Predict_T_cell_cross_reactivity
     """
@@ -12,11 +12,11 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
     Package settings
     """
     name_package = 'cressp'
-    dir_remote = 'https://github.com/ahs2202/cressp/raw/main/cressp/' # remote directory from which datafiles will be downloaded
-    dir_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
+    path_remote = 'https://github.com/ahs2202/cressp/raw/main/cressp/' # remote directory from which datafiles will be downloaded
+    path_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
 
     ''' read dict_blosum62 from the tsv file '''
-    df_blosum62 = pd.read_csv( f'{dir_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
+    df_blosum62 = pd.read_csv( f'{path_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
     dict_blosum62 = dict( )
     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
         dict_blosum62[ aa_0, aa_1 ] = score
@@ -30,8 +30,8 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
     int_thres_max_length_peptide_mhc_i = 15
 
     ''' define and open an output folder '''
-    dir_file_output = f"{dir_folder_pipeline}t_cell.mhc_binding.tsv.gz"
-    newfile = gzip.open( dir_file_output, 'wb' )
+    path_file_output = f"{path_folder_pipeline}t_cell.mhc_binding.tsv.gz"
+    newfile = gzip.open( path_file_output, 'wb' )
     l_col = [ 'mhc_allele', 'affinity_query', 'affinity_target', 'source', 'query_accession', 'target_accession', 'e_value', 'score_blosum', 'query_start', 'query_end', 'target_start', 'target_end', 'query_subsequence', 'target_subsequence', 'window_size', 'average_score_blosum', 'query_processing_score', 'target_processing_score', 'mhc_class', 'score_for_sorting' ]
     newfile.write( ( '\t'.join( l_col ) + '\n' ).encode( ) ) # write a header line for the output file
 
@@ -40,15 +40,15 @@ def Predict_T_cell_cross_reactivity( dir_folder_pipeline, float_thres_avg_blosum
     predictor = Class1PresentationPredictor.load( ) # load MHCflurry predictor for benchmarking
 
     ''' retrieve MHC-I alleles with allele frequency larger then the given threshold in at least one population '''
-    PKG.Download_Data( "data/mhc_population_allele_frequency.tsv.gz", dir_remote, name_package ) # download data
-    PKG.Download_Data( "data/autoimmune_disease_associated_mhc_alleles.tsv.gz", dir_remote, name_package ) # download data
-    df_mhc_af = pd.read_csv( f"{dir_folder_cressp}data/mhc_population_allele_frequency.tsv.gz", sep = '\t', index_col = [ 0, 1 ] )
-    l_mhc_i_allele = list( PD_Threshold( ( df_mhc_af.loc[ 'I' ] > float_thres_min_mhc_allele_frequency ).sum( axis = 1 ), a = 0 ).index.values ) + list( pd.read_csv( f"{dir_folder_cressp}data/autoimmune_disease_associated_mhc_alleles.tsv.gz", sep = '\t' ).mhc_allele.unique( ) ) # retrieve mhc_i_alleles with allele frequency > 'float_thres_min_mhc_allele_frequency' in at least one population # also retrieve autoimmune-associated alleles
+    PKG.Download_Data( "data/mhc_population_allele_frequency.tsv.gz", path_remote, name_package ) # download data
+    PKG.Download_Data( "data/autoimmune_disease_associated_mhc_alleles.tsv.gz", path_remote, name_package ) # download data
+    df_mhc_af = pd.read_csv( f"{path_folder_cressp}data/mhc_population_allele_frequency.tsv.gz", sep = '\t', index_col = [ 0, 1 ] )
+    l_mhc_i_allele = list( PD_Threshold( ( df_mhc_af.loc[ 'I' ] > float_thres_min_mhc_allele_frequency ).sum( axis = 1 ), a = 0 ).index.values ) + list( pd.read_csv( f"{path_folder_cressp}data/autoimmune_disease_associated_mhc_alleles.tsv.gz", sep = '\t' ).mhc_allele.unique( ) ) # retrieve mhc_i_alleles with allele frequency > 'float_thres_min_mhc_allele_frequency' in at least one population # also retrieve autoimmune-associated alleles
     l_mhc_i_allele = list( set( l_mhc_i_allele ).intersection( predictor.supported_alleles ) ) # retrive valid alleles for MHCflurry
 
     ''' prepare df_matched before iteration '''
     if 'df_matched' not in locals( ) :
-        df_matched = pd.read_csv( f'{dir_folder_pipeline}matched.tsv.gz', sep = '\t' ) # read alignments between query and target protein sequences
+        df_matched = pd.read_csv( f'{path_folder_pipeline}matched.tsv.gz', sep = '\t' ) # read alignments between query and target protein sequences
     df_matched_for_mhc_i = df_matched[ df_matched.query_alignment.apply( len ) >= int_thres_max_length_peptide_mhc_i ]
     iter_arr_df_matched_for_mhc_i = ( arr for arr in df_matched_for_mhc_i[ [ 'query_accession', 'target_accession', 'query_start', 'query_end', 'target_start', 'target_end', 'query_alignment', 'target_alignment', 'e_value', 'source' ] ].values )
 

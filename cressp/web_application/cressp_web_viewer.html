@@ -1164,9 +1164,9 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
     var object_data = { }; // an object containing data
     object_data.file = { };
     object_data.file.base_url = "https://raw.githubusercontent.com/ahs2202/3M/master/";
-    object_data.file.dict_dir_file_to_parsed_data = { };
+    object_data.file.dict_path_file_to_parsed_data = { };
     object_data.data = { };
-    object_data.data.dict_dir_file_to_dictarr = { };
+    object_data.data.dict_path_file_to_dictarr = { };
     object_data.main = { };
     object_data.main.dataset = { }; // object storing loaded data of datasets
     object_data.main.gene = { };
@@ -1229,25 +1229,25 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
     }
     
     
-    async function LoadLocalData( l_dir_file ) { // load list of given tsv files from local locations through asynchrous operations
+    async function LoadLocalData( l_path_file ) { // load list of given tsv files from local locations through asynchrous operations
         return new Promise( async function( resolve, reject ) { 
-            console.log( "[LoadLocalData] local data loading started:", l_dir_file );
+            console.log( "[LoadLocalData] local data loading started:", l_path_file );
             Loading_Screen( true ) // add loading screen
-            let l_dir_file_not_parsed = [ ];
-            for ( let i = 0; i < l_dir_file.length; i ++ ) { // ignore already downloaded files
-                if ( ! ( l_dir_file[ i ] in object_data.file.dict_dir_file_to_parsed_data ) ) { 
-                    l_dir_file_not_parsed.push( l_dir_file[ i ] );
+            let l_path_file_not_parsed = [ ];
+            for ( let i = 0; i < l_path_file.length; i ++ ) { // ignore already downloaded files
+                if ( ! ( l_path_file[ i ] in object_data.file.dict_path_file_to_parsed_data ) ) { 
+                    l_path_file_not_parsed.push( l_path_file[ i ] );
                 } // if current file has not been parsed, parse the file 
             }
-            l_dir_file = l_dir_file_not_parsed;
-            let l_promise = l_dir_file.map( function( dir_file ) { 
-                if( dir_file.split( '.' ).slice( - 1 )[ 0 ] == "tsv" ) { // if given remote file is a tsv file
+            l_path_file = l_path_file_not_parsed;
+            let l_promise = l_path_file.map( function( path_file ) { 
+                if( path_file.split( '.' ).slice( - 1 )[ 0 ] == "tsv" ) { // if given remote file is a tsv file
                     return new Promise ( function( resolve, reject ) {
-                        Papa.parse( dict_file[ dir_file ], { download: false, header: true, skipEmptyLines: false, delimiter: '\t', dynamicTyping: true, complete: function( results ) { resolve( results.data.slice( 0, results.data.length - 1 ) ) }, error: reject } );
+                        Papa.parse( dict_file[ path_file ], { download: false, header: true, skipEmptyLines: false, delimiter: '\t', dynamicTyping: true, complete: function( results ) { resolve( results.data.slice( 0, results.data.length - 1 ) ) }, error: reject } );
                     });
-                } else if ( dir_file.split( '.' ).slice( - 2 ).join( '.' ) == "base64.txt" ) { // if given remote file is base64-encoded binary file
+                } else if ( path_file.split( '.' ).slice( - 2 ).join( '.' ) == "base64.txt" ) { // if given remote file is base64-encoded binary file
                     return new Promise ( function( resolve, reject ) {
-                        LoadLocalTextFile( dict_file[ dir_file ] )
+                        LoadLocalTextFile( dict_file[ path_file ] )
                             .then( ( text_base64 ) => {
                               return ParseBase64GzippedText( text_base64 );
                            }).then( ( text ) => {
@@ -1259,10 +1259,10 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
             let results = await Promise.all( l_promise ); // wait until all files have been parsed by Papa.parse
             l_parsed_data = [ ]; // empty a list
             l_parsed_data.push( ... results );
-            for ( let i = 0; i < l_dir_file.length; i ++ ) { 
-                object_data.file.dict_dir_file_to_parsed_data[ l_dir_file[ i ] ] = l_parsed_data[ i ];
+            for ( let i = 0; i < l_path_file.length; i ++ ) { 
+                object_data.file.dict_path_file_to_parsed_data[ l_path_file[ i ] ] = l_parsed_data[ i ];
             } // put parsed data into a dictionary
-            console.log( "[LoadLocalData] local data loaded:", l_dir_file );
+            console.log( "[LoadLocalData] local data loaded:", l_path_file );
             resolve( "[LoadLocalData] resolved" )
             Loading_Screen( false ) // add loading screen
         });
@@ -1272,20 +1272,20 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
         // retrieve updated setting
         object_data.flag.alignment_to_target = $id( "toggle_alignment_mode" ).checked; // retrieve alignment mode
 
-        let l_dir_file_to_be_loaded = [ ], // retrieve list of files of remote locations for loading datasets
-            l_dir_file = Object.keys( dict_file ),
-            dict_dir_file = { }; 
+        let l_path_file_to_be_loaded = [ ], // retrieve list of files of remote locations for loading datasets
+            l_path_file = Object.keys( dict_file ),
+            dict_path_file = { }; 
         Loading_Screen( true );
-        for ( let i = 0, dir_file; dir_file = l_dir_file[ i ]; i ++ ) {
-            if ( dir_file.split( '.' )[ 0 ] == 'TCellCrossReactivity' ) {
+        for ( let i = 0, path_file; path_file = l_path_file[ i ]; i ++ ) {
+            if ( path_file.split( '.' )[ 0 ] == 'TCellCrossReactivity' ) {
                 
-            } else if ( dir_file.split( '.' )[ 0 ] == 'BCellCrossReactivity' ) {
+            } else if ( path_file.split( '.' )[ 0 ] == 'BCellCrossReactivity' ) {
                 
             } else {
-                l_dir_file_to_be_loaded.push( dir_file ); // load all other files that are note B-cell or T-cell records
+                l_path_file_to_be_loaded.push( path_file ); // load all other files that are note B-cell or T-cell records
             }
         }
-        await LoadLocalData( l_dir_file_to_be_loaded ); // load files for the selected dataset 
+        await LoadLocalData( l_path_file_to_be_loaded ); // load files for the selected dataset 
         console.log( "[Load_Dataset] loading data completed" );
         await ParseData( ); // parse loaded data
         console.log( "[Load_Dataset] parsing data completed" );
@@ -2180,18 +2180,18 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
     
     var l_parsed_data = [ ];
     var function_colormap_rsa = chroma.scale( [ 'black', 'white' ] ), function_colormap_score_blosum = chroma.scale( [ '#f00','white', '#0f0' ] ), function_colormap_torsion_angle = chroma.scale( [ '#52f9ff', '#972ff7', 'yellow', '#52f9ff' ] ), function_colormap_score_iedb_epitope = chroma.scale( [ '#ff00f2', '#1500ff' ] ), function_colormap_rainbow = chroma.scale( [ '#f00','#0f0','#00f','#f00' ] ).mode('hsl'); // define functions for colormaps
-    async function LoadRemoteData( l_dir_file ) { // load list of given tsv files from remote locations through asynchrous operations
+    async function LoadRemoteData( l_path_file ) { // load list of given tsv files from remote locations through asynchrous operations
         return new Promise( async function( resolve, reject ) { 
-            console.log( "[LoadRemoteData] remote data fetch started:", l_dir_file );
+            console.log( "[LoadRemoteData] remote data fetch started:", l_path_file );
             Loading_Screen( true ) // add loading screen
-            let l_dir_file_not_downloaded = [ ];
-            for ( let i = 0; i < l_dir_file.length; i ++ ) { // ignore already downloaded files
-                if ( ! ( l_dir_file[ i ] in object_data.file.dict_dir_file_to_parsed_data ) ) { 
-                    l_dir_file_not_downloaded.push( l_dir_file[ i ] );
+            let l_path_file_not_downloaded = [ ];
+            for ( let i = 0; i < l_path_file.length; i ++ ) { // ignore already downloaded files
+                if ( ! ( l_path_file[ i ] in object_data.file.dict_path_file_to_parsed_data ) ) { 
+                    l_path_file_not_downloaded.push( l_path_file[ i ] );
                 } // if current file has not been downloaded, download the file 
             }
-            l_dir_file = l_dir_file_not_downloaded;
-            let l_promise = l_dir_file.map( function( file ) { 
+            l_path_file = l_path_file_not_downloaded;
+            let l_promise = l_path_file.map( function( file ) { 
                 if( file.split( '.' ).slice( - 1 )[ 0 ] == "tsv" ) { // if given remote file is a tsv file
                     return new Promise ( function( resolve, reject ) {
                         Papa.parse( file, { download: true, header: true, skipEmptyLines: false, delimiter: '\t', dynamicTyping: true, complete: function( results ) { resolve( results.data.slice( 0, results.data.length - 1 ) ) }, error: reject } );
@@ -2212,10 +2212,10 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
             let results = await Promise.all( l_promise ); // wait until all files have been parsed by Papa.parse
             l_parsed_data = [ ]; // empty a list
             l_parsed_data.push( ... results );
-            for ( let i = 0; i < l_dir_file.length; i ++ ) { 
-                object_data.file.dict_dir_file_to_parsed_data[ l_dir_file[ i ] ] = l_parsed_data[ i ];
+            for ( let i = 0; i < l_path_file.length; i ++ ) { 
+                object_data.file.dict_path_file_to_parsed_data[ l_path_file[ i ] ] = l_parsed_data[ i ];
             } // put parsed data into a dictionary
-            console.log( "[LoadRemoteData] remote data loaded:", l_dir_file );
+            console.log( "[LoadRemoteData] remote data loaded:", l_path_file );
             resolve( "[LoadRemoteData] resolved" )
             Loading_Screen( false ) // add loading screen
         });
@@ -2281,44 +2281,44 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
         
         // initialize 
         if ( ! ( 'dictarr_data_mhc_allele' in dataset ) ) {
-            dataset.dictarr_data_mhc_allele = Unpack_array_to_dict_data( object_data.file.dict_dir_file_to_parsed_data[ "mhc_allele.tsv.gz.base64.txt" ] ); }
+            dataset.dictarr_data_mhc_allele = Unpack_array_to_dict_data( object_data.file.dict_path_file_to_parsed_data[ "mhc_allele.tsv.gz.base64.txt" ] ); }
         // simply put arrays in the name space of the dataset
-        dataset.arr_data_mhc_allele = object_data.file.dict_dir_file_to_parsed_data[ "mhc_allele.tsv.gz.base64.txt" ];
+        dataset.arr_data_mhc_allele = object_data.file.dict_path_file_to_parsed_data[ "mhc_allele.tsv.gz.base64.txt" ];
 
         // load dict_blosum62 score dictionary if it has not been loaded
         if ( ! ( 'dict_blosum62' in object_data.main ) ) { 
-            let arr_data_blosum62 = object_data.file.dict_dir_file_to_parsed_data[ "blosum62.tsv.gz.base64.txt" ]; // blosum62 score matrix
+            let arr_data_blosum62 = object_data.file.dict_path_file_to_parsed_data[ "blosum62.tsv.gz.base64.txt" ]; // blosum62 score matrix
             object_data.main.dict_blosum62 = { }; 
             for ( let i = 0; i < arr_data_blosum62.length; i ++ ) { 
                 object_data.main.dict_blosum62[ arr_data_blosum62[ i ].pair_of_amino_acids ] = arr_data_blosum62[ i ].score_blosum62;
             }
         }
         if ( ! ( 'dictarr_data_acc_target' in dataset ) ) {
-            dataset.dictarr_data_acc_target = Unpack_array_to_dict_data( object_data.file.dict_dir_file_to_parsed_data[ "acc_target.tsv.gz.base64.txt" ] ); }
+            dataset.dictarr_data_acc_target = Unpack_array_to_dict_data( object_data.file.dict_path_file_to_parsed_data[ "acc_target.tsv.gz.base64.txt" ] ); }
         if ( ! ( 'dictarr_data_acc_pdb' in dataset ) ) {
-            dataset.dictarr_data_acc_pdb = Unpack_array_to_dict_data( object_data.file.dict_dir_file_to_parsed_data[ "acc_pdb.tsv.gz.base64.txt" ] ); }
+            dataset.dictarr_data_acc_pdb = Unpack_array_to_dict_data( object_data.file.dict_path_file_to_parsed_data[ "acc_pdb.tsv.gz.base64.txt" ] ); }
         if ( ! ( 'acc_query' in dataset ) ) {
             dataset.acc_query = { };
-            dataset.acc_query.dict_data_all = Unpack_array_to_dict_data( object_data.file.dict_dir_file_to_parsed_data[ "acc_query.tsv.gz.base64.txt" ] );
+            dataset.acc_query.dict_data_all = Unpack_array_to_dict_data( object_data.file.dict_path_file_to_parsed_data[ "acc_query.tsv.gz.base64.txt" ] );
             dataset.dictarr_data_acc_query = dataset.acc_query.dict_data_all;
             dataset.acc_query.dictionary_acc_query_to_l_index = Index_list_with_dictionary( dataset.acc_query.dict_data_all[ 'value' ].map( ( e ) => { return e; } ) ); // index records according to datatype of records with the 'query' labels
         } 
         if ( ! ( 'acc_target' in dataset ) ) {
             dataset.acc_target = { };
-            dataset.acc_target.dict_data_all = Unpack_array_to_dict_data( object_data.file.dict_dir_file_to_parsed_data[ "acc_target.tsv.gz.base64.txt" ] );
+            dataset.acc_target.dict_data_all = Unpack_array_to_dict_data( object_data.file.dict_path_file_to_parsed_data[ "acc_target.tsv.gz.base64.txt" ] );
             dataset.dictarr_data_acc_target = dataset.acc_target.dict_data_all;
             dataset.acc_target.dictionary_acc_target_to_l_index = Index_list_with_dictionary( dataset.acc_target.dict_data_all[ 'value' ].map( ( e ) => { return e; } ) ); // index records according to datatype of records with the 'target' labels
         }
         
         // simply put arrays in the name space of the dataset
-        dataset.arr_data_acc_target = object_data.file.dict_dir_file_to_parsed_data[ "acc_target.tsv.gz.base64.txt" ];
-        dataset.arr_data_acc_pdb = object_data.file.dict_dir_file_to_parsed_data[ "acc_pdb.tsv.gz.base64.txt" ];
-        dataset.arr_data_acc_query = object_data.file.dict_dir_file_to_parsed_data[ "acc_query.tsv.gz.base64.txt" ];
-        dataset.arr_data_alignment_query_pdb = object_data.file.dict_dir_file_to_parsed_data[ "alignment_query_pdb__compact__for_web_application.tsv.gz.base64.txt" ];
-        dataset.arr_data_alignment_query_target = object_data.file.dict_dir_file_to_parsed_data[ "alignment_query_target__compact__for_web_application.tsv.gz.base64.txt" ];
-        dataset.arr_data_alignment_target_pdb = object_data.file.dict_dir_file_to_parsed_data[ "alignment_target_pdb__compact__for_web_application.tsv.gz.base64.txt" ];
-        dataset.arr_data_structural_property_query = object_data.file.dict_dir_file_to_parsed_data[ "structural_property_query__compact__for_web_application.tsv.gz.base64.txt" ];
-        dataset.arr_data_structural_property_target = object_data.file.dict_dir_file_to_parsed_data[ "structural_property_target__compact__for_web_application.tsv.gz.base64.txt" ];
+        dataset.arr_data_acc_target = object_data.file.dict_path_file_to_parsed_data[ "acc_target.tsv.gz.base64.txt" ];
+        dataset.arr_data_acc_pdb = object_data.file.dict_path_file_to_parsed_data[ "acc_pdb.tsv.gz.base64.txt" ];
+        dataset.arr_data_acc_query = object_data.file.dict_path_file_to_parsed_data[ "acc_query.tsv.gz.base64.txt" ];
+        dataset.arr_data_alignment_query_pdb = object_data.file.dict_path_file_to_parsed_data[ "alignment_query_pdb__compact__for_web_application.tsv.gz.base64.txt" ];
+        dataset.arr_data_alignment_query_target = object_data.file.dict_path_file_to_parsed_data[ "alignment_query_target__compact__for_web_application.tsv.gz.base64.txt" ];
+        dataset.arr_data_alignment_target_pdb = object_data.file.dict_path_file_to_parsed_data[ "alignment_target_pdb__compact__for_web_application.tsv.gz.base64.txt" ];
+        dataset.arr_data_structural_property_query = object_data.file.dict_path_file_to_parsed_data[ "structural_property_query__compact__for_web_application.tsv.gz.base64.txt" ];
+        dataset.arr_data_structural_property_target = object_data.file.dict_path_file_to_parsed_data[ "structural_property_target__compact__for_web_application.tsv.gz.base64.txt" ];
 
         //  assign color to query proteins // build a colormap for representing accessions of query proteins
         if ( ! ( 'l_colormap_rainbow_acc_query' in dataset ) ) {
@@ -2509,7 +2509,7 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
         });
     }
     async function LoadLocalData_BasedOnSettings( ) { // load dataset based on setting
-        let l_dir_file = [ ];
+        let l_path_file = [ ];
         let dataset = object_data.main.dataset, // retrieve dataset
             float_thres_margin = 1.5; // a threshold for skipping writing a file if the number of records for subset is too close to the maximum number
 
@@ -2527,8 +2527,8 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
                 dataset.object_plot_BCellCrossReactivity.n_records_of_remote_file = object_data.file.l_n_records_for_each_step[ i ];
             }
         }
-        dataset.object_plot_BCellCrossReactivity.dir_file = "BCellCrossReactivity." + dataset.object_plot_BCellCrossReactivity.redundancy_level + ".windowSize_" + dataset.object_plot_BCellCrossReactivity.window_size + ".top_" + String( dataset.object_plot_BCellCrossReactivity.n_records_of_remote_file ) + ".tsv.gz.base64.txt";
-        l_dir_file.push( dataset.object_plot_BCellCrossReactivity.dir_file );
+        dataset.object_plot_BCellCrossReactivity.path_file = "BCellCrossReactivity." + dataset.object_plot_BCellCrossReactivity.redundancy_level + ".windowSize_" + dataset.object_plot_BCellCrossReactivity.window_size + ".top_" + String( dataset.object_plot_BCellCrossReactivity.n_records_of_remote_file ) + ".tsv.gz.base64.txt";
+        l_path_file.push( dataset.object_plot_BCellCrossReactivity.path_file );
         if ( object_data.flag.cross_reactive_mhc_ligand_data_exist ) { // when mhc_ligand prediction data exists
             dataset.object_plot_TCellCrossReactivity.n_records_from_setting = parseInt( document.getElementById( "input_n_alignments_for_plotting_TCellCrossReactivity" ).value );
             dataset.object_plot_TCellCrossReactivity.redundancy_level = 'all'; // fixed redundancy level // document.getElementById( "select_redundancy_level_TCellCrossReactivity" ).value;
@@ -2542,11 +2542,11 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
                     dataset.object_plot_TCellCrossReactivity.n_records_of_remote_file = object_data.file.l_n_records_for_each_step[ i ];
                 }
             }
-            dataset.object_plot_TCellCrossReactivity.dir_file = "TCellCrossReactivity." + dataset.object_plot_TCellCrossReactivity.redundancy_level + ".top_" + String( dataset.object_plot_TCellCrossReactivity.n_records_of_remote_file ) + ".tsv.gz.base64.txt";
-            l_dir_file.push( dataset.object_plot_TCellCrossReactivity.dir_file ); 
+            dataset.object_plot_TCellCrossReactivity.path_file = "TCellCrossReactivity." + dataset.object_plot_TCellCrossReactivity.redundancy_level + ".top_" + String( dataset.object_plot_TCellCrossReactivity.n_records_of_remote_file ) + ".tsv.gz.base64.txt";
+            l_path_file.push( dataset.object_plot_TCellCrossReactivity.path_file ); 
         }
         gtag( 'event', 'loading_data', { t_cell_n_records : ( object_data.flag.cross_reactive_mhc_ligand_data_exist ) ? dataset.object_plot_TCellCrossReactivity.n_records_from_setting : 0, b_cell_n_records : dataset.object_plot_BCellCrossReactivity.n_records_from_setting, b_cell_window_size : dataset.object_plot_BCellCrossReactivity.window_size, t_cell_redundancy_level : dataset.object_plot_BCellCrossReactivity.redundancy_level, t_cell_redundancy_level : ( object_data.flag.cross_reactive_mhc_ligand_data_exist ) ? dataset.object_plot_TCellCrossReactivity.redundancy_level : "nan" } ); // [Google Analytics] record which remote data is being downloaded to improve statistics
-        return LoadLocalData( l_dir_file ); // load given list of files from remote locations
+        return LoadLocalData( l_path_file ); // load given list of files from remote locations
     }
     function Open_and_Draw_BCellCrossReactivityPredMetricsPlot( ) {
         str_jquery_container = "#plotly_graph_b_cell_cross_reactivity";
@@ -2774,11 +2774,11 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
         let int_window_size = parseInt( dataset.object_plot_BCellCrossReactivity.window_size );
         dataset.object_plot_BCellCrossReactivity.int_window_size = int_window_size;
         console.log( `[DrawMolecularMimicryMap] preprocessing of ${name_dataset} started with ${( object_data.flag.alignment_to_target )? "AlignmentTotarget" : "AlignmentToquery"} mode.` );
-        console.log( "[DrawMolecularMimicryMap] Drawing graphs using following files:", dataset.object_plot_BCellCrossReactivity.dir_file, dataset.object_plot_TCellCrossReactivity.dir_file, "for dataset " );
+        console.log( "[DrawMolecularMimicryMap] Drawing graphs using following files:", dataset.object_plot_BCellCrossReactivity.path_file, dataset.object_plot_TCellCrossReactivity.path_file, "for dataset " );
         console.log( "[DrawMolecularMimicryMap] setting hovermode to", object_plot_MolecularMimicryMap.hovermode );
 
         // preprocess B cell cross reactivity prediction data 
-        dataset.arr_data_BCellCrossReactivity = object_data.file.dict_dir_file_to_parsed_data[ dataset.object_plot_BCellCrossReactivity.dir_file ];
+        dataset.arr_data_BCellCrossReactivity = object_data.file.dict_path_file_to_parsed_data[ dataset.object_plot_BCellCrossReactivity.path_file ];
         dataset.object_plot_BCellCrossReactivity.n_records = Math.min( dataset.arr_data_BCellCrossReactivity.length, dataset.object_plot_BCellCrossReactivity.n_records_from_setting ); // retrieve the number of BCellCrossReactivity records to plot
         dataset.arr_data_BCellCrossReactivity = dataset.arr_data_BCellCrossReactivity.slice( 0, dataset.object_plot_BCellCrossReactivity.n_records ); // retrieve "dataset.object_plot_BCellCrossReactivity.n_records" number of records
         dict_l.BCellCrossReactivity_arr_data.push( dataset.arr_data_BCellCrossReactivity ); // add array to the list 
@@ -2853,7 +2853,7 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
 
         // preprocess T cell cross reactivity prediction data when mhc_ligand prediction data exists
         if ( object_data.flag.cross_reactive_mhc_ligand_data_exist ) { // when mhc_ligand prediction data exists
-            dataset.arr_data_TCellCrossReactivity = object_data.file.dict_dir_file_to_parsed_data[ dataset.object_plot_TCellCrossReactivity.dir_file ];
+            dataset.arr_data_TCellCrossReactivity = object_data.file.dict_path_file_to_parsed_data[ dataset.object_plot_TCellCrossReactivity.path_file ];
             dataset.object_plot_TCellCrossReactivity.n_records = Math.min( dataset.arr_data_TCellCrossReactivity.length, dataset.object_plot_TCellCrossReactivity.n_records_from_setting ); // retrieve the number of BCellCrossReactivity records to plot
             dataset.arr_data_TCellCrossReactivity = dataset.arr_data_TCellCrossReactivity.slice( 0, dataset.object_plot_TCellCrossReactivity.n_records ); // retrieve "dataset.object_plot_TCellCrossReactivity.n_records" number of records from 'dataset.arr_data_TCellCrossReactivity'
             dict_l.TCellCrossReactivity_arr_data.push( dataset.arr_data_TCellCrossReactivity ); // add array to the list 
