@@ -179,6 +179,17 @@ def cressp( dir_file_protein_target = None, dir_file_protein_query = 'human', di
                 PKG.Download_Data( "data/human/hmmdb_autoantigen.hmm.gz", dir_remote, name_package ) # download data
                 PKG.Gunzip_Data( "data/human/hmmdb_autoantigen.hmm.gz", name_package ) # unzip data
                 dir_file_query_hmmdb = pkg_resources.resource_filename( name_package, 'data/human/hmmdb_autoantigen.hmm' ) # set default 'dir_file_query_hmmdb'
+    elif  '.txt' in dir_file_protein_query : 
+        Info( "The query data is txt format. Change subset mode." )
+        flag_default_protein_query_was_used = True
+        with open(dir_file_protein_query) as f:
+            arr_query_gene_list = np.array(f.read().splitlines())
+        PKG.Download_Data( "data/human/uniprot.tsv.gz", dir_remote, name_package ) # download data
+        dir_file_protein_query = f'{dir_folder_cressp}data/human/human_uniprot.subset.fa' # set default 'dir_file_protein_query' # file_name will be used to refer to the given query protein, and thus 'human_uniprot' is used as a file_name.
+        df_protein_query = PD_Select( pd.read_csv( f'{dir_folder_cressp}data/human/uniprot.tsv.gz', sep = '\t' ), id_protein = arr_query_gene_list)
+        dict_fasta_protein_query = df_protein_query.set_index( 'fasta_header' ).seq.to_dict( )
+        FASTA_Write( dir_file_protein_query, dict_fasta = dict_fasta_protein_query )
+
     else :
         if flag_use_HMM_search and dir_file_query_hmmdb == 'human' :
             Info( "[Error] exiting since query proteins other than default human proteins were given, the default HMM profile database cannot be used." )
