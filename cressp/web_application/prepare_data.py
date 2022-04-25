@@ -511,7 +511,7 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
     df.wildcard_1 = df.wildcard_1.astype( int )
     df_large_file = PD_Threshold( df, wildcard_1a = int_thres_large_files )
     print( f"{len( df_large_file )}/{len( df )} files ({round( float( df_large_file.size_in_bytes.sum( ) / 1e6 ), 2 )}MB/{round( float( df.size_in_bytes.sum( ) / 1e6 ), 2 )}MB) with more than {int_thres_large_files} records will be filtered out for web deployment" )
-    for path_file in df_large_file.dir.values :
+    for path_file in df_large_file.path.values :
         os.remove( path_file )
 
     """ 

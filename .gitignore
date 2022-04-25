@@ -35,3 +35,8 @@ coverage.xml
 *.mo
 
 # blast db
+*.flag
+*.gz
+
+cressp/data/pdb/*
+cressp/data/human/*
