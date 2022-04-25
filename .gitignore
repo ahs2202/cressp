@@ -38,5 +38,5 @@ coverage.xml
 *.flag
 *.gz
 
-cressp/data/pdb/*
-cressp/data/human/*
+cressp/data/pdb/
+cressp/data/human/
