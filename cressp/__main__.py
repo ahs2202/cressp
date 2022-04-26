@@ -163,6 +163,17 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
             if flag_usage_from_command_line_interface : sys.exit( )
             else : return - 1
 
+    # define folder directories for each task
+    path_folder_pipeline = f"{path_folder_output}pipeline/"
+    path_folder_pipeline_temp = f'{path_folder_pipeline}temp/' 
+    path_folder_pipeline_struc = f'{path_folder_pipeline}struc/' # create a working directory of estimating structural properties
+    path_folder_pipeline_web = f'{path_folder_pipeline}web_application/' # a working directory for exporting data for web applications
+    path_folder_web = f'{path_folder_output}web_application/'
+    
+    # create folders
+    for path_folder in [ path_folder_output, path_folder_pipeline, path_folder_pipeline_temp, path_folder_pipeline_struc, path_folder_pipeline_web, path_folder_web ] :
+        os.makedirs( path_folder, exist_ok = True )
+
     # handle default settings for input datafiles
     flag_default_protein_query_was_used = False # a flag indicating whether the default protein_query was used
     if path_file_protein_query == 'human' :
@@ -188,7 +199,7 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
             
         PKG.Download_Data( "data/human/uniprot.tsv.gz", path_remote, name_package ) # download data
         
-        path_file_protein_query = f'{path_folder_cressp}data/human/human_uniprot.subset.fa' # set default 'path_file_protein_query' # file_name will be used to refer to the given query protein, and thus 'human_uniprot' is used as a file_name.
+        path_file_protein_query = f"{path_folder_pipeline}protein_query.fasta" # set default 'path_file_protein_query' # file_name will be used to refer to the given query protein, and thus 'human_uniprot' is used as a file_name.
         df_protein_query = PD_Select( pd.read_csv( f'{path_folder_cressp}data/human/uniprot.tsv.gz', sep = '\t' ), id_protein = arr_query_gene_list)
         dict_fasta_protein_query = df_protein_query.set_index( 'fasta_header' ).seq.to_dict( )
         FASTA_Write( path_file_protein_query, dict_fasta = dict_fasta_protein_query )
@@ -198,6 +209,26 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
                 PKG.Download_Data( "data/human/hmmdb_autoantigen.hmm.gz", path_remote, name_package ) # download data
                 PKG.Gunzip_Data( "data/human/hmmdb_autoantigen.hmm.gz", name_package ) # unzip data
                 path_file_query_hmmdb = pkg_resources.resource_filename( name_package, 'data/human/hmmdb_autoantigen.hmm' ) # set default 'path_file_query_hmmdb'
+            # make hmmdb subset
+            path_file_hmm_subset = f'{path_folder_pipeline}hmmdb.hmm'
+            set_name_query = set(arr_query_gene_list)
+            newfile = open( path_file_hmm_subset, 'w' ) 
+            with open( path_file_query_hmmdb ) as file : 
+                def __get_protein_name_hmm__( str_hmm ) :
+                    return str_hmm.split( '\nNAME', 1 )[ 1 ].split( '\n', 1 )[ 0 ].strip( )
+                str_content = ''
+                while True :
+                    line = file.readline( )
+                    if len( line ) == 0 :
+                        break
+                    elif line == '//\n' : # if the end of an HMM record is detected
+                        name_query =__get_protein_name_hmm__( str_content)
+                        if name_query in set_name_query :
+                            newfile.write( str_content + '//\n' )
+                        str_content = ''
+                    else :
+                        str_content += line
+            path_file_query_hmmdb = path_file_hmm_subset
 
     else :
         if flag_use_HMM_search and path_file_query_hmmdb == 'human' :
@@ -214,21 +245,6 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
         path_folder_output = f"{os.getcwd( )}/cressp_out/" # set default output folder
     # get absolute paths for folder arguments        
     path_folder_output = os.path.abspath( path_folder_output )
-
-    # handle output folder
-    if path_folder_output[ -1 ] != '/' : # last character of a directory should be '/'
-        path_folder_output += '/'
-    # define folder directories for each task
-    path_folder_pipeline = f"{path_folder_output}pipeline/"
-    path_folder_pipeline_temp = f'{path_folder_pipeline}temp/' 
-    path_folder_pipeline_struc = f'{path_folder_pipeline}struc/' # create a working directory of estimating structural properties
-    path_folder_pipeline_web = f'{path_folder_pipeline}web_application/' # a working directory for exporting data for web applications
-    path_folder_web = f'{path_folder_output}web_application/'
-    
-    # create folders
-    for path_folder in [ path_folder_output, path_folder_pipeline, path_folder_pipeline_temp, path_folder_pipeline_struc, path_folder_pipeline_web, path_folder_web ] :
-        os.makedirs( path_folder, exist_ok = True )
-
 
     """
     Read and move input protein Fasta files
