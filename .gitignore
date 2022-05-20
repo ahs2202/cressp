@@ -36,5 +36,9 @@ coverage.xml
 *.mo
 
 # blast db
-cressp/data/pdb/
 cressp/data/human/*.hmm
+cressp/web_application/__pycache__/prepare_data.cpython-38.pyc
+cressp/data/pdb/makeblastdb_out/
+cressp/data/pdb/*.fa
+cressp/data/pdb/*.out
+

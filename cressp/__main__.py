@@ -92,7 +92,7 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
     Info( '[Pipeline Start] Pipeline Started at ' + TIME_GET_timestamp( True ) )
     
     # fixed arguments
-    float_search_thres_e_value = 30 # set e-value threshold for search (fixed for maximum sensitivity)
+    float_thres_e_value = 30 # set e-value threshold for search (fixed for maximum sensitivity)
 
     
     ''' check whether the program is called from the command-line interface or from an interactive Python programming environment '''
@@ -162,6 +162,12 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
             Info( "[Error] required input 'path_file_protein_target' was not given" )
             if flag_usage_from_command_line_interface : sys.exit( )
             else : return - 1
+    
+    # handle default setting for the output folder
+    if path_folder_output == 'default' :
+        path_folder_output = f"{os.getcwd( )}/cressp_out/" # set default output folder
+    # get absolute paths for folder arguments        
+    path_folder_output = os.path.abspath( path_folder_output ) + '/'
 
     # define folder directories for each task
     path_folder_pipeline = f"{path_folder_output}pipeline/"
@@ -169,7 +175,7 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
     path_folder_pipeline_struc = f'{path_folder_pipeline}struc/' # create a working directory of estimating structural properties
     path_folder_pipeline_web = f'{path_folder_pipeline}web_application/' # a working directory for exporting data for web applications
     path_folder_web = f'{path_folder_output}web_application/'
-    
+
     # create folders
     for path_folder in [ path_folder_output, path_folder_pipeline, path_folder_pipeline_temp, path_folder_pipeline_struc, path_folder_pipeline_web, path_folder_web ] :
         os.makedirs( path_folder, exist_ok = True )
@@ -239,12 +245,6 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
     path_file_protein_target = os.path.abspath( path_file_protein_target )
     path_file_protein_query = os.path.abspath( path_file_protein_query )
     path_file_query_hmmdb = os.path.abspath( path_file_query_hmmdb )
-
-    # handle default setting for the output folder
-    if path_folder_output == 'default' :
-        path_folder_output = f"{os.getcwd( )}/cressp_out/" # set default output folder
-    # get absolute paths for folder arguments        
-    path_folder_output = os.path.abspath( path_folder_output )
 
     """
     Read and move input protein Fasta files
@@ -357,7 +357,7 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
 
         # run blastp
         path_file_blastp_output = f'{path_folder_pipeline}blastp.tsv'
-        OS_Run( [ 'blastp', '-query', path_file_protein_target, '-db', path_prefix_blastdb_protein_query, '-out', path_file_blastp_output, '-outfmt', '6 qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore btop', '-num_threads', f'{n_threads}', '-evalue', f'{float_search_thres_e_value}' ], path_file_stdout = f"{path_folder_pipeline}blastp.stdout.txt", path_file_stderr = f"{path_folder_pipeline}blastp.stderr.txt", return_output = False ) # run blastp
+        OS_Run( [ 'blastp', '-query', path_file_protein_target, '-db', path_prefix_blastdb_protein_query, '-out', path_file_blastp_output, '-outfmt', '6 qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore btop', '-num_threads', f'{n_threads}', '-evalue', f'{float_thres_e_value}' ], path_file_stdout = f"{path_folder_pipeline}blastp.stdout.txt", path_file_stderr = f"{path_folder_pipeline}blastp.stderr.txt", return_output = False ) # run blastp
         OS_Run( [ 'gzip', path_file_blastp_output ], path_file_stdout = f"{path_file_blastp_output}.gzip.stdout.txt", path_file_stderr = f"{path_file_blastp_output}.gzip.stderr.txt", return_output = False ) # compress blastp output
         path_file_blastp_output += '.gz'
         
@@ -378,7 +378,7 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
         path_file_flag = f"{path_folder_pipeline}hmmsearch_completed.flag"
         path_file_hmmsearch_output = f'{path_folder_pipeline}hmmsearch.out'
         if not os.path.exists( path_file_flag ) :
-            OS_Run( [ 'hmmsearch', '-o', path_file_hmmsearch_output, '--acc', '--notextw', '--cpu', f'{n_threads}', '-E', f'{float_search_thres_e_value}', path_file_query_hmmdb, path_file_protein_target ], path_file_stdout = f"{path_folder_pipeline}hmmsearch.stdout.txt", path_file_stderr = f"{path_folder_pipeline}hmmsearch.stderr.txt", return_output = False ) # run hmmsearch
+            OS_Run( [ 'hmmsearch', '-o', path_file_hmmsearch_output, '--acc', '--notextw', '--cpu', f'{n_threads}', '-E', f'{float_thres_e_value}', path_file_query_hmmdb, path_file_protein_target ], path_file_stdout = f"{path_folder_pipeline}hmmsearch.stdout.txt", path_file_stderr = f"{path_folder_pipeline}hmmsearch.stderr.txt", return_output = False ) # run hmmsearch
             """ set flag """
             with open( path_file_flag, 'w' ) as newfile :
                 newfile.write( 'completed\n' )
@@ -433,6 +433,30 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
         with open( path_file_flag, 'w' ) as file :
             file.write( f"search results were written at {TIME_GET_timestamp( )}" )
     Info( "[Task Completion] Combining HMMER and BLASTP search results was completed at " + TIME_GET_timestamp( True ) )
+
+    """
+    Subset query and target proteins based on matched.tsv.gz result
+    """
+    path_file_matched = f'{path_folder_pipeline}matched.tsv.gz'
+
+    """ check flag """
+    path_file_flag = f"{path_folder_pipeline}query_and_target_proteins_filtered_based_on_matched_result.flag"
+
+    if not os.path.exists( path_file_flag ) :
+        # load matched result (if it has not been already loaded)
+        if 'df_matched' not in locals( ) : 
+            df_matched = pd.read_csv( path_file_matched, sep = '\t' )
+
+        df_matched = PD_Threshold(df_matched, evalueb = float_thres_e_value)
+        FASTA_Filter_by_Accession(f'{path_folder_pipeline}protein_target.fasta', f'{path_folder_pipeline}protein_target.matched.fasta', set(df_matched.target_accession.unique()), header_split_at_space = True, flag_insert_characters_every_n_characters = True )
+        FASTA_Filter_by_Accession(f'{path_folder_pipeline}protein_query.fasta', f'{path_folder_pipeline}protein_query.matched.fasta', set(df_matched.query_accession.unique()), header_split_at_space = True, flag_insert_characters_every_n_characters = True )
+
+        path_file_matched_origin, path_file_matched =  f'{path_folder_pipeline}matched.tsv.gz', f'{path_folder_pipeline}protein_target.matched.fasta'
+
+        """ set flag """
+        with open( path_file_flag, 'w' ) as file :
+            file.write( f"search results were written at {TIME_GET_timestamp( )}" )
+    Info( "[Task Completion] Subsetting query and target proteins based on matched.tsv.gz result was completed at " + TIME_GET_timestamp( True ) )
     
     """
     Estimate structural properties of proteins 
@@ -449,7 +473,7 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
             shutil.copyfile( f'{path_folder_cressp}data/human/uniprot.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz', f'{path_folder_pipeline}struc/protein_query.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz' ) 
 
         # estimate structural properties
-        for name_file in [ 'protein_target' ] if flag_default_protein_query_was_used else [ 'protein_target', 'protein_query' ] : # skip prediction of query proteins if default query proteins are used
+        for name_file in [ 'protein_target' ] if flag_default_protein_query_was_used else [ 'protein_target.matched', 'protein_query.matched' ] : # skip prediction of query proteins if default query proteins are used
             """ check flag_2 """
             path_file_flag_2 = f"{path_folder_pipeline}{name_file}.tsv.gz.completed.flag"
             if not os.path.exists( path_file_flag_2 ) :

@@ -3,5 +3,7 @@
 cressp/data/pdb/rcsb_pdb.tsv.gz filter=lfs diff=lfs merge=lfs -text
 cressp/data/pdb/swiss_model.tsv.gz filter=lfs diff=lfs merge=lfs -text
 cressp/data/pdb/AlphaFoldStructureDB.tsv.gz filter=lfs diff=lfs merge=lfs -text
-cressp/data/human/hmmdb_autoantigen.hmm filter=lfs diff=lfs merge=lfs -text
+cressp/data/human/hmmdb_autoantigen.hmm.gz filter=lfs diff=lfs merge=lfs -text
 cressp/data/human/hmmdb.hmm.gz filter=lfs diff=lfs merge=lfs -text
+cressp/data/pdb/rcsb_pdb.label_seq_id.start_end.tsv.gz filter=lfs diff=lfs merge=lfs -text
+cressp/data/pdb/rcsb_pdb.id_model_and_label_entity_id.tsv.gz filter=lfs diff=lfs merge=lfs -text
