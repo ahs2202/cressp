@@ -6,6 +6,87 @@ pd.options.mode.chained_assignment = None  # default='warn' # to disable worinin
 # define read-only global variables during multiprocessing
 dict_index_df_blastp, arr_data_df_blastp, dict_acc_to_arr_acc_dssp, dict_acc_to_arr_phi_dssp, dict_acc_to_arr_psi_dssp, dict_acc_to_arr_ss8_dssp, dict_kw_rsa, dict_kw_torsion_angle, dict_kw_ss8, dict_kw_datatype, dict_fasta_protein = [ dict( ) ] * 11
 
+# defin inputs 
+df_input = df_input
+dict_struc_query = dict_struc_query
+dict_struc_target = dict_struc_target
+path_folder_cressp = '/home/ajun/git/cressp/cressp/'
+
+def retrieve_alignment_with_struc_properties( df_input : pd.DataFrame, dict_struc_query : dict, dict_struc_target : dict, path_folder_cressp : str ) :
+    """ 2022-10-25 
+    retrieve alignment with structural properties as list of dataframe
+    """
+    def retrieve_struc_properties( dict_struc : dict, id_protein : str, pos_st : int, pos_en : int ) :
+        """ # 2022-10-25 14:49
+        compose a dataframe from dict_struc, a dictionary data returned by cressp.Parse_Structural_Properties, for a given id_protein and pos_st : pos_en
+        for visualization
+
+        dict_struc, 
+        id_protein, 
+        pos_st: start position in 0-based coordinates
+        pos_en: end position in 0-based coordinates
+        """
+        # check input validity
+        if id_protein not in dict_struc[ 'acc' ] : # check id_protein exists
+            return 
+        
+        l_name_datatype = list( dict_struc ) # retrieve available datatypes
+
+        dict_data = dict( ) # initialize a dictioinary to build a dataframe
+        for name_datatype in l_name_datatype :
+            arr_data = dict_struc[ name_datatype ][ id_protein ][ pos_st : pos_en ] # retrieve arr_data for the given id_protein and st : en positions
+            dict_data[ name_datatype ] = arr_data
+        return dict_data
+
+    """ read BLOSUM62 score matrix """
+    # read dict_blosum62 from the tsv file
+    df_blosum62 = pd.read_csv( f'{path_folder_cressp}data/blosum62.tsv.gz', sep = '\t' )
+    dict_blosum62 = dict( )
+    for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
+        dict_blosum62[ aa_0, aa_1 ] = score
+
+    l_df = [ ] # initialize a container
+    for query_accession,  target_accession,  query_start,  query_end,  target_start,  target_end,  query_subsequence,  target_subsequence,  score_blosum,  score_blosum_weighted in df_input[ [ 'query_accession',  'target_accession',  'query_start',  'query_end',  'target_start',  'target_end',  'query_subsequence',  'target_subsequence',  'score_blosum',  'score_blosum_weighted' ] ].values : # retrieve data as dictionary
+        # retrieve structural data of query and target proteins
+        dict_struc_query_of_a_protein = retrieve_struc_properties( dict_struc_query, query_accession, query_start - 1,  query_end ) # 1>0 based coordinates
+        dict_struc_target_of_a_protein = retrieve_struc_properties( dict_struc_target, target_accession, target_start - 1,  target_end ) # 1>0 based coordinates
+
+        set_name_datatype = set( dict_struc_target_of_a_protein ).intersection( set( dict_struc_target_of_a_protein ) ) # retrieve intersection of datatypes shared by query and target protesns
+        dict_data = { 'blosum_score' : [ ] } # initialize a container
+        for name_datatype in set_name_datatype :
+            dict_data[ f"{name_datatype}_query" ] = [ ]
+            dict_data[ f"{name_datatype}_target" ] = [ ]
+        # initialize positions
+        int_pos_query = 0
+        int_pos_target = 0
+        for amino_acid_query, amino_acid_target in zip( query_subsequence, target_subsequence ) :
+            if amino_acid_query == '-' : # when query contain a deletion
+                for name_datatype in set_name_datatype : # for each datatype
+                    dict_data[ f"{name_datatype}_query" ].append( np.nan ) # indicate a deletion
+                    dict_data[ f"{name_datatype}_target" ].append( dict_struc_target_of_a_protein[ name_datatype ][ int_pos_target ] )
+                # update positions
+                int_pos_target += 1
+
+            elif amino_acid_target == '-' : # when target contain a deletion
+                for name_datatype in set_name_datatype : # for each datatype
+                    dict_data[ f"{name_datatype}_query" ].append( dict_struc_query_of_a_protein[ name_datatype ][ int_pos_query ] )
+                    dict_data[ f"{name_datatype}_target" ].append( np.nan ) # indicate a deletion
+                # update positions
+                int_pos_query += 1
+
+            else : # no deletion
+                for name_datatype in set_name_datatype : # for each datatype
+                    dict_data[ f"{name_datatype}_query" ].append( dict_struc_query_of_a_protein[ name_datatype ][ int_pos_query ] )
+                    dict_data[ f"{name_datatype}_target" ].append( dict_struc_target_of_a_protein[ name_datatype ][ int_pos_target ] )
+                # update positions
+                int_pos_query += 1
+                int_pos_target += 1
+            # add BLOSUM62 score
+            dict_data[ 'blosum_score' ].append( dict_blosum62[ amino_acid_query, amino_acid_target ] ) # retrieve blosum62 score
+
+        l_df.append( pd.DataFrame( dict_data ) ) # retrieve a dataframe
+    return l_df
+
 def __Transfer_DSSP_Structural_Property_Through_BLAST__( path_file_input, path_folder_cressp, path_folder_pipeline_temp ) : # 2020-07-29 01:09:01 
     """
     # 2021-05-31 15:15:54 
