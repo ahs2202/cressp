@@ -6,11 +6,11 @@ pd.options.mode.chained_assignment = None  # default='warn' # to disable worinin
 # define read-only global variables during multiprocessing
 dict_index_df_blastp, arr_data_df_blastp, dict_acc_to_arr_acc_dssp, dict_acc_to_arr_phi_dssp, dict_acc_to_arr_psi_dssp, dict_acc_to_arr_ss8_dssp, dict_kw_rsa, dict_kw_torsion_angle, dict_kw_ss8, dict_kw_datatype, dict_fasta_protein = [ dict( ) ] * 11
 
-# defin inputs 
-df_input = df_input
-dict_struc_query = dict_struc_query
-dict_struc_target = dict_struc_target
-path_folder_cressp = '/home/ajun/git/cressp/cressp/'
+# defin inputs for 'retrieve_alignment_with_struc_properties function'
+# df_input = df_input
+# dict_struc_query = dict_struc_query
+# dict_struc_target = dict_struc_target
+# path_folder_cressp = '/home/ajun/git/cressp/cressp/'
 
 def retrieve_alignment_with_struc_properties( df_input : pd.DataFrame, dict_struc_query : dict, dict_struc_target : dict, path_folder_cressp : str ) :
     """ 2022-10-25 
@@ -303,7 +303,7 @@ def __Encode_and_Write_Structural_Properties__( file_handle, dict_record ) :
     # l_col = [ 'id_protein', 'seq', 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1', 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'structure_id___redundancy_reduced' ] # when datatype_acc is not present
 
     ''' encode structural properties '''
-    l_data = [ dict_record[ 'id_protein' ], dict_record[ 'seq' ], ASCII_Encode( [ dict_record[ 'acc' ] ], ** dict_kw_rsa )[ 0 ], ASCII_Encode( [ dict_record[ 'phi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'psi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'ss8' ] ], ** dict_kw_ss8 )[ 0 ] ] + ( [ ASCII_Encode( [ dict_record[ 'datatype_acc' ] ], ** dict_kw_datatype )[ 0 ] ] if 'datatype_acc' in dict_record else [ ] ) + [ Encode_List_of_Strings( dict_record[ 'structure_id' ] if not isinstance( dict_record[ 'structure_id' ], float ) else [ '' ] * len( dict_record[ 'seq' ] ) ) ] # if 'datatype_acc' column does not exist, does not include it in the output
+    l_data = [ dict_record[ 'id_protein' ], dict_record[ 'seq' ], ASCII_Encode( [ dict_record[ 'acc' ] ], ** dict_kw_rsa )[ 0 ], ASCII_Encode( [ dict_record[ 'phi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'psi' ] ], ** dict_kw_torsion_angle )[ 0 ], ASCII_Encode( [ dict_record[ 'ss8' ] ], ** dict_kw_ss8 )[ 0 ] ] + ( [ ASCII_Encode( [ dict_record[ 'datatype_acc' ] ], ** dict_kw_datatype )[ 0 ] ] if 'datatype_acc' in dict_record else [ ] ) + [ Encode_List_of_Strings( dict_record[ 'structure_id' ] if not isinstance( dict_record[ 'structure_id' ], float ) else [ np.nan ] * len( dict_record[ 'seq' ] ) ) ] # if 'datatype_acc' column does not exist, does not include it in the output
     file_handle.write( ( '\t'.join( list( map( __add_quotation__, l_data ) ) ) + '\n' ).encode( ) ) # write a record
 def __Parse_Structural_Properties__( path_file_sp, int_datatype ) :
     """

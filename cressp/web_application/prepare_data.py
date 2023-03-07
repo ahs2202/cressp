@@ -74,8 +74,8 @@ def Retrieve_Overlapping_Structures( path_file_input, path_file_b_cell, name_fil
             line_without_newline = line.decode( ).strip( ) # retrieve line without a newline character
             window_size, id_alignment, source, query_accession, target_accession, e_value, identity, alignment_start, alignment_end, query_start, query_end, target_start, target_end, query_subsequence, target_subsequence, score_blosum, score_blosum_weighted, sum_of_weights, score_similarity_acc, score_similarity_phi, score_similarity_psi, score_similarity_ss8, n_residues_acc, n_residues_phi, n_residues_psi, n_residues_ss8, correl_coeffi_acc, correl_p_value_acc, correl_coeffi_phi, correl_p_value_phi, correl_coeffi_psi, correl_p_value_psi, prop_pdb_evidence_query, prop_pdb_evidence_target, structure_id_query, count_structure_id_query, structure_id_target, count_structure_id_target, most_frequent_ss8_query, count_most_frequent_ss8_query, most_frequent_ss8_target, count_most_frequent_ss8_target = Parse_Line( line_without_newline, [ int, int, str, str, str, float, float, int, int, int, int, int, int, str, str, int, float, float, float, float, float, float, int, int, int, int, float, float, float, float, float, float, float, float, str, int, str, int, str, int, str, int ], delimiter = '\t' )
             ''' search maximum overlap with RCSB_PDB structures for each record in the input data '''
-            max_overlap_query, id_alignment_structure_query, query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, alignment_structure_query_start, alignment_structure_query_end = Retrieve_Alignment( arr_data_blastp_pdb_query[ dict_index_blastp_pdb_query[ query_accession, structure_id_query ] ], query_start, query_end ) if isinstance( structure_id_query, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
-            max_overlap_target, id_alignment_structure_target, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, alignment_structure_target_start, alignment_structure_target_end = Retrieve_Alignment( arr_data_blastp_pdb_target[ dict_index_blastp_pdb_target[ target_accession, structure_id_target ] ], target_start, target_end ) if isinstance( structure_id_target, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
+            max_overlap_query, id_alignment_structure_query, query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, alignment_structure_query_start, alignment_structure_query_end = Retrieve_Alignment( arr_data_blastp_pdb_query[ dict_index_blastp_pdb_query[ query_accession, structure_id_query ] ], query_start, query_end ) if isinstance( structure_id_query, str ) and structure_id_query != 'None' and query_accession != 'none' else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
+            max_overlap_target, id_alignment_structure_target, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, alignment_structure_target_start, alignment_structure_target_end = Retrieve_Alignment( arr_data_blastp_pdb_target[ dict_index_blastp_pdb_target[ target_accession, structure_id_target ] ], target_start, target_end ) if isinstance( structure_id_target, str ) and structure_id_target != 'None' and target_accession != 'none' else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
             ''' write processed result '''
             newfile.write( ( line_without_newline + '\t' + '\t'.join( list( map( str, [ query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, max_overlap_query, id_alignment_structure_query, alignment_structure_query_start, alignment_structure_query_end, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, max_overlap_target, id_alignment_structure_target, alignment_structure_target_start, alignment_structure_target_end ] ) ) ) + '\n' ).encode( ) )
 def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_cressp_setting ) :
@@ -202,6 +202,7 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
     df_blastp_pdb_target_subset.to_csv( f'{path_folder_pipeline_web}alignment_target_pdb.source.tsv.gz', sep = '\t', index = False )
     df_blastp_pdb_query_subset.to_csv( f'{path_folder_pipeline_web}alignment_query_pdb.source.tsv.gz', sep = '\t', index = False )
     df_matched_subset.to_csv( f'{path_folder_pipeline_web}alignment_query_target.source.tsv.gz', sep = '\t', index = False )
+    # filtering intermediate results
     # rename columns and reset index to set new id_alignment
     df_blastp_pdb_target_subset = df_blastp_pdb_target_subset.rename( columns = { 'query_seq_aligned' : 'query_alignment', 'subject_seq_aligned' : 'target_alignment' } ).reset_index( drop = True )
     df_blastp_pdb_query_subset = df_blastp_pdb_query_subset.rename( columns = { 'query_seq_aligned' : 'query_alignment', 'subject_seq_aligned' : 'target_alignment' } ).reset_index( drop = True )
@@ -340,6 +341,7 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
 
     ''' add additional information for using the CoordinateServer for displaying structures '''
     # read pdb accessions and parse data
+    # df_acc_pdb = PD_Select(pd.read_csv( f'{path_folder_pipeline_web}acc_pdb.source.tsv.gz', sep = '\t' ), deselect = True, value = 'None') 
     df_acc_pdb = pd.read_csv( f'{path_folder_pipeline_web}acc_pdb.source.tsv.gz', sep = '\t' )
     arr_value = df_acc_pdb.value.values # retrieve the encoded values
     df_acc_pdb = df_acc_pdb.reset_index( drop = True ).join( pd.DataFrame( list( e.split( '_' ) for e in df_acc_pdb.value.values ), columns = [ 'id_pdb', 'id_chain', 'id_model' ] ) )
@@ -404,13 +406,27 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
     dict_kw_rsa_for_web_application = dict( ascii_min = 33, ascii_max = 126, n_char = 1, value_min = 0, value_max = 1 ) # since string encoding structure information for web application will not be delivered in FASTA format, '>' character can be used in the encoding
     dict_kw_torsion_angle_for_web_application = dict( ascii_min = 33, ascii_max = 126, n_char = 1, value_min = -180, value_max = 180 )
 
-    df_fasta_acc_query = pd.read_csv( f'{path_folder_pipeline}protein_query.tsv.gz', sep = '\t' ) # load structural property data for target sequences 
+    df_fasta_acc_query = pd.read_csv( f'{path_folder_pipeline}protein_query.tsv.gz', sep = '\t' ) # load structural property data for target sequences     
     df_fasta_acc_target = pd.read_csv( f'{path_folder_pipeline}protein_target.tsv.gz', sep = '\t' ) # load structural property data for target sequences 
+    def Drop_invalid_rows( df ):
+        l = [ ]
+        for e in df.structure_id___redundancy_reduced.values :
+            try :
+                Encode_List_of_Strings( Decode_List_of_Strings( e ), chr_representing_repeated_string = None )
+                l.append( False )
+            except :
+                l.append( True )
+        f = df[ l ].id_protein.values
+        return df[ ~ np.array(l) ], f
     
+    # df_fasta_acc_query, l_temp = Drop_invalid_rows(df_fasta_acc_query)
+    # del(l_temp)
+    # df_fasta_acc_target, l_invalid = Drop_invalid_rows(df_fasta_acc_query)
     # subset structural data and order records in the same order as 'df_acc_query' or 'df_acc_target'
     df_fasta_acc_query_subset = df_fasta_acc_query.set_index( str_col_id ).loc[ df_acc_query.value.values ].reset_index( )
     df_fasta_acc_target_subset = df_fasta_acc_target.set_index( str_col_id ).loc[ df_acc_target.value.values ].reset_index( )
-    
+    # df_fasta_acc_target_subset = df_fasta_acc_target.set_index( str_col_id ).loc[ list(set(df_acc_target.value.values).intersection(set(l_invalid))) ].reset_index( )
+    # df_fasta_acc_target = df_fasta_acc_target.set_index( str_col_id ).loc[ list(set(df_acc_target.value.values).intersection(set(l_invalid))) ].reset_index( )
     # parse structural data of query sequences
     df_fasta_acc_query_subset.set_index( str_col_id, inplace = True )
     df_fasta_acc_query_subset[ 'rsa___ascii_encoding_1_character_from_33_to_126__from_0_to_1__for_web_application' ] = pd.Series( ASCII_Encode( ASCII_Decode( df_fasta_acc_query_subset[ 'rsa___ascii_encoding_2_characters_from_33_to_126__from_0_to_1' ].dropna( ).to_dict( ), ** dict_kw_rsa ), ** dict_kw_rsa_for_web_application ) )
@@ -427,6 +443,7 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
     df_fasta_acc_target_subset[ 'phi___ascii_encoding_1_character_from_33_to_126__from_-180_to_180__for_web_application' ] = pd.Series( ASCII_Encode( ASCII_Decode( df_fasta_acc_target_subset[ 'phi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle ), ** dict_kw_torsion_angle_for_web_application ) )
     df_fasta_acc_target_subset[ 'psi___ascii_encoding_1_character_from_33_to_126__from_-180_to_180__for_web_application' ] = pd.Series( ASCII_Encode( ASCII_Decode( df_fasta_acc_target_subset[ 'psi___ascii_encoding_2_characters_from_33_to_126__from_-180_to_180' ].dropna( ).to_dict( ), ** dict_kw_torsion_angle ), ** dict_kw_torsion_angle_for_web_application ) )
     dict_fasta = df_fasta_acc_target_subset[ 'structure_id___redundancy_reduced' ].dropna( ).to_dict( )
+    
     df_fasta_acc_target_subset[ 'structure_id' ] = pd.Series( dict( ( acc, Encode_List_of_Strings( Decode_List_of_Strings( dict_fasta[ acc ] ), chr_representing_repeated_string = None ) ) for acc in dict_fasta ) )
     df_fasta_acc_target_subset.reset_index( inplace = True )
     l_col_acc_target = [ 'rsa___ascii_encoding_1_character_from_33_to_126__from_0_to_1__for_web_application', 'phi___ascii_encoding_1_character_from_33_to_126__from_-180_to_180__for_web_application', 'psi___ascii_encoding_1_character_from_33_to_126__from_-180_to_180__for_web_application', 'ss8___ascii_encoding_1_character_from_33_to_41__states_G_H_I_E_B_T_S_C', 'rsa_datatype___ascii_encoding_1_character_from_33_to_36__states_Pred_Model_PDB', 'structure_id' ]
@@ -444,6 +461,9 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
         for index in dict_it : dict_it[ index ].merge_overlaps( )
         dict_dict_it[ filename ] = dict_it
     # write compact alignment and structural property records by discarding the portion of data values that were not linked to the records in the BCellCrossReactivity data
+    # df_blastp_pdb_target_subset = PD_Select(df_blastp_pdb_target_subset, deselect = True ,qaccver = l_invalid )
+    # df_matched_subset = PD_Select(df_matched_subset, deselect = True, target_accession = l_invalid)
+    # df_subsequence_pdb_web = PD_Select(df_subsequence_pdb_web, deselect = True, target_accession = l_invalid)
     for df, filename, l_col in zip( [ df_matched_subset, df_blastp_pdb_query_subset, df_blastp_pdb_target_subset, df_fasta_acc_query_subset, df_fasta_acc_target_subset ], [ 'alignment_query_target', 'alignment_query_pdb', 'alignment_target_pdb', 'structural_property_query', 'structural_property_target' ], [ [ 'query_alignment', 'target_alignment' ], [ 'query_alignment', 'target_alignment' ], [ 'query_alignment', 'target_alignment' ], l_col_acc_query, l_col_acc_target ] ) : # dict_dict_it :
         arr_data = df[ l_col ].values # retrieve data values from the dataframe
         # use pre-initialized list of list to compose a dataframe since iterating a dictionary does not guarantee the order of keys
@@ -463,6 +483,10 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
                 arr_interval_start = arr_raveled[ : : 2 ]
                 str_discarded_regions = ';'.join( list( "{}:{}".format( int_discarded_start, len_discarded ) for int_discarded_start, len_discarded in zip( arr_interval_end, arr_interval_start - arr_interval_end ) ) )
             l_l_value[ index ].append( str_discarded_regions )
+            # except:
+            #     print(index)
+            #     with open("/node01data/project/Linked_Read_Metagenomics/SLE_Nephritis/pipeline/20230127_Reproduce_lupus/df.pickle", "wb") as f:
+            #         pickle.dump(df, f)
             for col, value in zip( l_col, arr_data[ index ] ) :
                 str_compact = ''
                 if isinstance( value, float ) and np.isnan( value ) : pass

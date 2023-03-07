@@ -30,6 +30,24 @@ Info = multiprocessing.get_logger( ).info
 #     for aa_0, aa_1, score in df_blosum62.values : # sould be in [ 'aa_0', 'aa_1', 'BLOSUM62_score' ] order
 #         dict_blosum62[ aa_0, aa_1 ] = score
 
+def FASTA_Filter_by_Accession(path_fasta_input, path_fasta_output, set_accession, header_split_at_space = True, flag_insert_characters_every_n_characters = True ) :
+    """
+    2022-04-29
+    path_fasta_input: path of input fasta file that will be filtered
+    path_fasta_output: path of output fasta file after filtering
+    set_accession: a set of accessions (should not contain any space if "header_split_at_space" is True ) for filtering
+    """
+    # Handle input
+    if not isinstance(set_accession, set):
+        set_accession = set(set_accession)
+    bool_flag_output_gzipped = path_fasta_output[ - 3 : ] == '.gz'
+    new_file =  gzip.open( path_fasta_output, 'wb' ) if bool_flag_output_gzipped else open( path_fasta_output, 'w' ) # open file of path_file_fasta depending on the detected gzipped statu
+    for r in FASTA_Iterate(path_fasta_input, header_split_at_space = header_split_at_space ):
+        if r['header'] in set_accession :
+            str_contents = '>' + r['header'] + '\n' + ( STR.Insert_characters_every_n_characters( r['sequence'], n_characters=60, insert_characters= '\n') if flag_insert_characters_every_n_characters else r['sequence'] ) + '\n'
+            new_file.write( str_contents.encode() if bool_flag_output_gzipped else str_contents )
+    new_file.close()
+
 def cressp( path_file_protein_target = None, path_file_protein_query = 'human', path_folder_output = 'default', n_threads = 1, l_window_size = [ 30 ], float_thres_e_value = 30, flag_use_HMM_search = False, path_file_query_hmmdb = 'human', flag_use_rcsb_pdb_only = False, int_number_of_proteins_in_a_batch_during_dnn_prediction = 1000, flag_only_use_structural_properties_of_query_proteins = False, float_thres_avg_score_blosum_weighted__b_cell = 0.15, float_thres_avg_score_blosum__b_cell = 0.0, float_thres_rsa_correlation = 0.0, float_thres_avg_blosum62_score_for_mhc = 2, float_thres_min_mhc_allele_frequency = 0.5, float_thres_binding_affinities_in_nM = 500, flag_replace_unconventional_acid_code = False, flag_use_gpu_devices = False, flag_use_all_gpu_devices = False, flag_deduplicate_based_on_aligned_subsequences_for_visualization = False ) :
     """
     The main function of Cross-Reactive-Epitope-Search-using-Structural-Properties-of-proteins (CRESSP)
