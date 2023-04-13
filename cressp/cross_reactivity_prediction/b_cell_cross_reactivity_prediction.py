@@ -290,6 +290,7 @@ def Predict_B_cell_cross_reactivity( path_folder_pipeline = None, path_folder_pi
     
     l_uuid_process = Multiprocessing( df_matched, BCell_Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, path_temp = path_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation, l_window_size, path_folder_cressp, path_folder_pipeline, path_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
     # combine output files for each window size
+    # if len(l_window_size) > 1:
     Multiprocessing( l_window_size, BCell_Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), path_temp = path_folder_pipeline_temp, global_arguments = [ path_folder_pipeline, path_folder_pipeline_temp ] ) # combine result files for each window_size
     
 

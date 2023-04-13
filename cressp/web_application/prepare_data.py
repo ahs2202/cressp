@@ -1,5 +1,6 @@
 from biobookshelf.main import *
 from biobookshelf import *
+from typing import Union, Iterable
 
 pd.options.mode.chained_assignment = None  # default='warn' # to disable worining
 
@@ -74,13 +75,22 @@ def Retrieve_Overlapping_Structures( path_file_input, path_file_b_cell, name_fil
             line_without_newline = line.decode( ).strip( ) # retrieve line without a newline character
             window_size, id_alignment, source, query_accession, target_accession, e_value, identity, alignment_start, alignment_end, query_start, query_end, target_start, target_end, query_subsequence, target_subsequence, score_blosum, score_blosum_weighted, sum_of_weights, score_similarity_acc, score_similarity_phi, score_similarity_psi, score_similarity_ss8, n_residues_acc, n_residues_phi, n_residues_psi, n_residues_ss8, correl_coeffi_acc, correl_p_value_acc, correl_coeffi_phi, correl_p_value_phi, correl_coeffi_psi, correl_p_value_psi, prop_pdb_evidence_query, prop_pdb_evidence_target, structure_id_query, count_structure_id_query, structure_id_target, count_structure_id_target, most_frequent_ss8_query, count_most_frequent_ss8_query, most_frequent_ss8_target, count_most_frequent_ss8_target = Parse_Line( line_without_newline, [ int, int, str, str, str, float, float, int, int, int, int, int, int, str, str, int, float, float, float, float, float, float, int, int, int, int, float, float, float, float, float, float, float, float, str, int, str, int, str, int, str, int ], delimiter = '\t' )
             ''' search maximum overlap with RCSB_PDB structures for each record in the input data '''
-            max_overlap_query, id_alignment_structure_query, query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, alignment_structure_query_start, alignment_structure_query_end = Retrieve_Alignment( arr_data_blastp_pdb_query[ dict_index_blastp_pdb_query[ query_accession, structure_id_query ] ], query_start, query_end ) if isinstance( structure_id_query, str ) and structure_id_query != 'None' and query_accession != 'none' else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
-            max_overlap_target, id_alignment_structure_target, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, alignment_structure_target_start, alignment_structure_target_end = Retrieve_Alignment( arr_data_blastp_pdb_target[ dict_index_blastp_pdb_target[ target_accession, structure_id_target ] ], target_start, target_end ) if isinstance( structure_id_target, str ) and structure_id_target != 'None' and target_accession != 'none' else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
+            max_overlap_query, id_alignment_structure_query, query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, alignment_structure_query_start, alignment_structure_query_end = Retrieve_Alignment( arr_data_blastp_pdb_query[ dict_index_blastp_pdb_query[ query_accession, structure_id_query ] ], query_start, query_end ) if isinstance( structure_id_query, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
+            max_overlap_target, id_alignment_structure_target, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, alignment_structure_target_start, alignment_structure_target_end = Retrieve_Alignment( arr_data_blastp_pdb_target[ dict_index_blastp_pdb_target[ target_accession, structure_id_target ] ], target_start, target_end ) if isinstance( structure_id_target, str ) else ( np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan )
             ''' write processed result '''
             newfile.write( ( line_without_newline + '\t' + '\t'.join( list( map( str, [ query_structure_start, query_structure_end, structure_id_query_start, structure_id_query_end, max_overlap_query, id_alignment_structure_query, alignment_structure_query_start, alignment_structure_query_end, target_structure_start, target_structure_end, structure_id_target_start, structure_id_target_end, max_overlap_target, id_alignment_structure_target, alignment_structure_target_start, alignment_structure_target_end ] ) ) ) + '\n' ).encode( ) )
-def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_cressp_setting ) :
-    """ Prepare_data_for_web_application """
-    
+def Prepare_data_for_web_application( 
+    path_file_b_cell : str,
+    path_file_t_cell : str, 
+    path_file_json_setting_cressp : str, 
+    path_folder_web : Union[ None, str ] = None, 
+) -> None :
+    """ Prepare_data_for_web_application
+    path_file_b_cell : str,
+    path_file_t_cell : str, 
+    path_file_json_setting_cressp : str, # cressp setting json file in pipeline folder
+    path_folder_web : Union[ None, str ] = None, # output folder where base64 files will be organized
+    """
     """
     Package settings
     """
@@ -88,18 +98,24 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
     path_remote = 'https://github.com/ahs2202/cressp/raw/main/cressp/' # remote directory from which datafiles will be downloaded
     path_folder_cressp = f"{pkg_resources.resource_filename( name_package, '' )}/" # directory of the current installed package
     
+     # read JSON setting
+    
+    with open( path_file_json_setting_cressp, 'r' ) as file :
+        dict_cressp_setting = json.load( file )
+                
     path_folder_output = dict_cressp_setting[ 'path_folder_output' ]
     path_folder_pipeline = dict_cressp_setting[ 'path_folder_pipeline' ]
     path_folder_pipeline_temp = dict_cressp_setting[ 'path_folder_pipeline_temp' ]
-    n_threads = dict_cressp_setting[ 'n_threads' ]
-    path_folder_pipeline_web = dict_cressp_setting[ 'path_folder_pipeline_web' ]
+    n_threads = dict_cressp_setting[ 'n_threads' ]    
     path_folder_pipeline_struc = dict_cressp_setting[ 'path_folder_pipeline_struc' ]
-    path_folder_web = dict_cressp_setting[ 'path_folder_web' ]
     flag_deduplicate_based_on_aligned_subsequences_for_visualization = dict_cressp_setting[ 'flag_deduplicate_based_on_aligned_subsequences_for_visualization' ]
     
+    # set default folder 
+    path_folder_pipeline_web = f"{path_folder_web}pipeline/"
+    path_folder_input_for_web_application = f"{path_folder_web}input_files_for_web_app/"
     # create folders if they do not exist
-    for path_folder in [ path_folder_pipeline_web, path_folder_pipeline_struc, path_folder_web ] :
-        os.makedirs( path_folder_pipeline_web, exist_ok = True )
+    for path_folder in [ path_folder_pipeline_web, path_folder_pipeline_struc, path_folder_web, path_folder_input_for_web_application ] :
+        os.makedirs( path_folder, exist_ok = True )
     
     ''' deduplicate records based on aligned subsequences '''
     if flag_deduplicate_based_on_aligned_subsequences_for_visualization :
@@ -121,7 +137,7 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
     """ add full-length alignments to RCSB_PDB structures """
     # update global read-only variables
     global dict_index_blastp_pdb_query, arr_data_blastp_pdb_query, dict_index_blastp_pdb_target, arr_data_blastp_pdb_target # use global variables
-    df = pd.read_csv( path_file_b_cell, sep = '\t', usecols = [ 'target_accession', 'query_accession' ] ) # retrieve target & query accessions
+    df = pd.read_csv( path_file_b_cell, sep = '\t', usecols = ['target_accession', 'query_accession'] ) # retrieve target & query accessions
     
     # load pdb aligned to target proteins
     df_blastp_pdb_target = pd.read_csv( f'{path_folder_pipeline_struc}protein_target.blastp_rcsb_pdb.with_aligned_seq.filtered.tsv.gz', sep = '\t' )
@@ -577,13 +593,13 @@ def Prepare_data_for_web_application( path_file_b_cell, path_file_t_cell, dict_c
     for path_file in glob.glob( f"{path_folder_pipeline_web_base64}*.base64.txt" ) :
         name_file = path_file.rsplit( '/', 1 )[ 1 ]
         l_name_file_web.append( name_file )
-        shutil.copyfile( path_file, f"{path_folder_web}{name_file}" )
+        shutil.copyfile( path_file, f"{path_folder_input_for_web_application}{name_file}" )
     dict_cressp_setting[ 'l_name_file_web' ] = l_name_file_web
 
     # record completed time
     dict_cressp_setting[ 'str_time_completed' ] = datetime.datetime.now( ).strftime( "%Y.%m.%d (%H:%M)" )
     
-    with open( f"{path_folder_web}{name_file_cressp_web_viewer_setting}", 'w' ) as newfile :
+    with open( f"{path_folder_input_for_web_application}{name_file_cressp_web_viewer_setting}", 'w' ) as newfile :
         json.dump( dict_cressp_setting, newfile, indent = 6 )
 
     # copy web viewer to 

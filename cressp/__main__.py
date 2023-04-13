@@ -191,11 +191,9 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
     path_folder_pipeline = f"{path_folder_output}pipeline/"
     path_folder_pipeline_temp = f'{path_folder_pipeline}temp/' 
     path_folder_pipeline_struc = f'{path_folder_pipeline}struc/' # create a working directory of estimating structural properties
-    path_folder_pipeline_web = f'{path_folder_pipeline}web_application/' # a working directory for exporting data for web applications
-    path_folder_web = f'{path_folder_output}web_application/'
 
     # create folders
-    for path_folder in [ path_folder_output, path_folder_pipeline, path_folder_pipeline_temp, path_folder_pipeline_struc, path_folder_pipeline_web, path_folder_web ] :
+    for path_folder in [ path_folder_output, path_folder_pipeline, path_folder_pipeline_temp, path_folder_pipeline_struc ] :
         os.makedirs( path_folder, exist_ok = True )
 
     # handle default settings for input datafiles
@@ -342,8 +340,6 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
         'path_folder_pipeline' : path_folder_pipeline,
         'path_folder_pipeline_temp' : path_folder_pipeline_temp,
         'path_folder_pipeline_struc' : path_folder_pipeline_struc,
-        'path_folder_pipeline_web' : path_folder_pipeline_web,
-        'path_folder_web' : path_folder_web,
         'name_file_protein_query' : name_file_protein_query,
         'name_file_protein_target' : name_file_protein_target }
     
@@ -549,11 +545,16 @@ def cressp( path_file_protein_target = None, path_file_protein_query = 'human', 
     path_file_flag = f"{path_file_matched}.prepare_data_for_web_application_completed.flag"
     if not os.path.exists( path_file_flag ) :
 
-        # combine results of all 'window_size' values
-        OS_FILE_Combine_Files_in_order( glob.glob( f"{path_folder_pipeline}b_cell.subsequence__window_size_*.tsv.gz" ), f"{path_folder_pipeline}b_cell.subsequence.tsv.gz", remove_n_lines = 1, flag_use_header_from_first_file = True )
+        # combine results of all 'window_size' values 
+        # OS_FILE_Combine_Files_in_order( glob.glob( f"{path_folder_pipeline}b_cell.subsequence__window_size_*.tsv.gz" ), f"{path_folder_pipeline}b_cell.subsequence.tsv.gz", remove_n_lines = 1, flag_use_header_from_first_file = True )
         # prepare data for web application using the combined subsequence
         # copy data for web application and encode using base64 encoding, and write metadata
-        Prepare_data_for_web_application( f"{path_folder_pipeline}b_cell.subsequence.tsv.gz", f"{path_folder_pipeline}t_cell.mhc_binding.tsv.gz", dict_cressp_setting )
+        Prepare_data_for_web_application( 
+            f"{path_folder_pipeline}b_cell.subsequence.tsv.gz", 
+            f"{path_folder_pipeline}t_cell.mhc_binding.tsv.gz", 
+            path_file_json_setting_cressp,
+            f'{path_folder_output}web_application/', # output folder for Prepare_data_for_web_application
+        )
         
         """ set flag """
         with open( path_file_flag, 'w' ) as newfile :
