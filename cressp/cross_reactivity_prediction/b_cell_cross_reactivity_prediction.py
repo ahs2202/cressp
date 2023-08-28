@@ -210,7 +210,7 @@ def BCell_Combine_result_files_for_each_window_size( path_file_input, path_folde
         int_window_size = arr_input[ 0 ]
         l_path_file = glob.glob( f"{path_folder_pipeline_temp}*_window_size_{int_window_size}.tsv.gz" ) # retrieve list of output files to combine into a single output file
         path_file_output_combining = f'{path_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.combining.tsv.gz'
-        path_file_output_combining_completed = f'{path_folder_pipeline}b_cell.subsequence__window_size_{int_window_size}.tsv.gz'
+        path_file_output_combining_completed = f'{path_folder_pipeline}b_cell.subsequence.tsv.gz'
         # if an output file exists, remove the output file
         if os.path.exists( path_file_output_combining_completed ) :
             os.remove( path_file_output_combining_completed )
@@ -290,7 +290,6 @@ def Predict_B_cell_cross_reactivity( path_folder_pipeline = None, path_folder_pi
     
     l_uuid_process = Multiprocessing( df_matched, BCell_Calculate_Similarity_Scores_in_Aligned_Sequences, n_threads, path_temp = path_folder_pipeline_temp, global_arguments = [ float_thres_avg_score_blosum_weighted__b_cell, float_thres_avg_score_blosum__b_cell, float_thres_rsa_correlation, l_window_size, path_folder_cressp, path_folder_pipeline, path_folder_pipeline_temp, flag_only_use_structural_properties_of_query_proteins ] ) # process similarity search result with multiple processes, and collect uuid of the processes
     # combine output files for each window size
-    # if len(l_window_size) > 1:
     Multiprocessing( l_window_size, BCell_Combine_result_files_for_each_window_size, n_threads = min( len( l_window_size ), n_threads ), path_temp = path_folder_pipeline_temp, global_arguments = [ path_folder_pipeline, path_folder_pipeline_temp ] ) # combine result files for each window_size
     
 
