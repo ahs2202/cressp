@@ -2799,7 +2799,9 @@ let rand_seed = xmur3( "CRESSP Web Viewer" ), random_number_generator = mulberry
         dataset.object_plot_BCellCrossReactivity.dict_data[ "string_correl_p_value_acc" ] = ArrayApply( dataset.object_plot_BCellCrossReactivity.dict_data[ "correl_p_value_acc" ], function( num ) { if( num == null ) { return "not available" } else { return num.toExponential( n_digits ); } } );
         dataset.object_plot_BCellCrossReactivity.dict_data[ "string_correl_p_value_phi" ] = ArrayApply( dataset.object_plot_BCellCrossReactivity.dict_data[ "correl_p_value_phi" ], function( num ) { if( num == null ) { return "not available" } else { return num.toExponential( n_digits ); } } );
         dataset.object_plot_BCellCrossReactivity.dict_data[ "string_correl_p_value_psi" ] = ArrayApply( dataset.object_plot_BCellCrossReactivity.dict_data[ "correl_p_value_psi" ], function( num ) { if( num == null ) { return "not available" } else { return num.toExponential( n_digits ); } } );
-        dataset.object_plot_BCellCrossReactivity.dict_data[ "avg_score_blosum_weighted" ] = ArrayApply( dataset.object_plot_BCellCrossReactivity.dict_data[ "score_blosum_weighted" ], function( num ) { return num / int_window_size; } );
+        let arr_score_blosum_weighted = nj.array(dataset.object_plot_BCellCrossReactivity.dict_data[ "score_blosum_weighted" ])
+        let arr_sum_of_weights = nj.array(dataset.object_plot_BCellCrossReactivity.dict_data[ "sum_of_weights" ])
+        dataset.object_plot_BCellCrossReactivity.dict_data[ "avg_score_blosum_weighted" ] =  arr_score_blosum_weighted.divide( arr_sum_of_weights ).tolist(); ) ;
             
         // retrieve YAxis setting
         selOpt = Select_Get_Selected_Option_Using_ID( "select_YAxis_BCellCrossReactivity" );
